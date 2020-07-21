@@ -1,0 +1,4 @@
+{
+    "go.gotoSymbol.includeGoroot": true,
+    // "go.goroot": "/home/matthewfrancis/Desktop/bloblet/go/go"
+}
