@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fenix/databases"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -40,7 +39,7 @@ func (api *API) error(w http.ResponseWriter, errcode, msg string, statusCode int
 }
 func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	email, password, ok := r.BasicAuth()
-	
+
 	if !ok {
 		api.badRequest(w)
 		return
@@ -64,7 +63,7 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 	if len(msg.Username) > 32 {
 		api.error(w, "ERR_USERNAMETOOLONG", "Your username is above 32 characters!", http.StatusBadRequest)
 	}
-	
+
 	user, err := api.userDatabase.CreateUser(email, password, msg.Username)
 
 	if (err == databases.UserExists{}) {
@@ -80,7 +79,7 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 		api.internalError(w)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("location", user.ID)
