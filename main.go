@@ -1,13 +1,10 @@
 package main
 
 import (
-	databases "fenix/databases"
-	"fmt"
+	api "fenix/api"
 )
 
 func main() {
-	database := databases.UserDatabase{}
-	fmt.Print(database.UserExists("YAY"))
-	// database.CreateFakeUser("YAY")
-	fmt.Print(database.UserExists("YAY"))
+	api := api.API{}
+	api.Serve()
 }
