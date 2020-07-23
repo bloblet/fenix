@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fenix/databases"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 )
 
 type create struct {
-	username, email, password string
+	Username string `json:"username"`
 }
 
 // API Fenix API
@@ -20,11 +21,35 @@ type API struct {
 	userDatabase databases.UserDatabase
 }
 
+func (api *API) badRequest(w http.ResponseWriter) {
+	api.error(w, "ERR_INVALIDREQUEST", "You probably sent invalid JSON.", http.StatusBadRequest)
+}
+func (api *API) internalError(w http.ResponseWriter) {
+	api.error(w, "ERR_INTERNALERROR", "Something bad happened!", http.StatusInternalServerError)
+}
+func (api *API) error(w http.ResponseWriter, errcode, msg string, statusCode int) {
+	output, err := json.Marshal(map[string]interface{}{"s": false, "e": errcode, "m": msg})
+	if err != nil {
+		panic(err)
+	}
+
+	w.WriteHeader(statusCode)
+	w.Header().Set("content-type", "application/json")
+
+	w.Write(output)
+}
 func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	email, password, ok := r.BasicAuth()
+	
+	if !ok {
+		api.badRequest(w)
+		return
+	}
+
 	b, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		api.internalError(w)
 		return
 	}
 
@@ -32,27 +57,33 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 	var msg create
 	err = json.Unmarshal(b, &msg)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		api.badRequest(w)
 		return
 	}
 
-	user, err := api.userDatabase.CreateUser(msg.email, msg.password, msg.username)
+	if len(msg.Username) > 32 {
+		api.error(w, "ERR_USERNAMETOOLONG", "Your username is above 32 characters!", http.StatusBadRequest)
+	}
+	
+	user, err := api.userDatabase.CreateUser(email, password, msg.Username)
 
 	if (err == databases.UserExists{}) {
-		http.Error(w, err.Error(), 403)
+		api.error(w, "ERR_USEREXISTS", "That user already exists!", http.StatusForbidden)
 		return
 	} else if err != nil {
-		http.Error(w, err.Error(), 500)
+		api.internalError(w)
 		return
 	}
 
-	w.Header().Set("content-type", "application/json")
-	output, err := json.Marshal(user)
+	output, err := json.Marshal(map[string]interface{}{"s": true, "d": user})
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		api.internalError(w)
 		return
 	}
-
+	
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("location", user.ID)
 	w.Write(output)
 }
 
@@ -60,7 +91,7 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 func (api *API) Serve() {
 	api.userDatabase = databases.UserDatabase{}
 	router := httprouter.New()
-	router.POST("/create", api.create)
+	router.POST("/6.0.1/create", api.create)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
