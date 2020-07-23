@@ -6,6 +6,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"fenix/models"
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -63,10 +64,11 @@ func userTxn(user *models.User, txn clientv3.Txn) (*clientv3.TxnResponse, error)
 
 func fatal(err error) {
 	now := time.Time{}
-	print(now)
-	print("\u001b[31m FATAL: ")
-	print(err)
-	print("\u001b[0m\n")
+	fmt.Print(now)
+	fmt.Print("\u001b[31m FATAL: ")
+	fmt.Print(err)
+	fmt.Print("\u001b[0m\n")
+	panic(err)
 }
 
 // UserDatabase manages the user database
@@ -101,7 +103,7 @@ func (db *UserDatabase) UserExists(email string) bool {
 		fatal(err)
 		return false
 	}
-	print(res.Count)
+	fmt.Print(res.Count)
 	return res.Count == 1
 }
 

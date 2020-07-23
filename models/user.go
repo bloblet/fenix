@@ -1,6 +1,9 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // User is the current datatype for fenix users.
 type User struct {
@@ -21,9 +24,10 @@ type User struct {
 func (user *User) ToJSON() string {
 	b, err := json.Marshal(user)
 	if err != nil {
-		print("Encountered an error while serializing a User object.  ")
-		print(err)
-		print("\n")
+		fmt.Print("Encountered an error while serializing a User object.  ")
+		fmt.Print(err)
+		fmt.Print("\n")
+		panic(err)
 	}
 
 	return string(b)
