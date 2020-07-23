@@ -121,8 +121,6 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 
 	uid, _ := uuid.NewRandom()
 
-	
-
 	user := models.User{}
 	user.Activity = models.Activity{}
 	user.Discriminator = makeDiscriminator()
@@ -136,13 +134,13 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	kv := clientv3.NewKV(cli)
-	
+
 	for i := 0; i <= 9999; i++ {
 		res, _ := userTxn(&user, kv.Txn(ctx))
-		if (res.Succeeded) {
+		if res.Succeeded {
 			break
 		}
-		if (i == 9999) {
+		if i == 9999 {
 			cancel()
 			return models.User{}, NoMoreDiscriminators{}
 		}
@@ -155,12 +153,14 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	return user, nil
 }
 
-type NoMoreDiscriminators struct {}
+type NoMoreDiscriminators struct{}
+
 func (e NoMoreDiscriminators) Error() string {
 	return "NoMoreDiscriminators"
 }
 
-type UserExists struct {}
+type UserExists struct{}
+
 func (e UserExists) Error() string {
 	return "UserExists"
 }

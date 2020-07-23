@@ -1,6 +1,6 @@
 package models
 
 type Comment struct {
-	UserID string
+	UserID  string
 	Content string
 }

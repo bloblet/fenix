@@ -1,6 +1,6 @@
 package models
 
 type Reaction struct {
-	Emoji RawEmoji
+	Emoji  RawEmoji
 	UserID string
 }

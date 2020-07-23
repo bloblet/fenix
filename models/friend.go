@@ -1,7 +1,7 @@
 package models
 
 type Friend struct {
-	username string
+	username      string
 	discriminator int
-	id string
+	id            string
 }

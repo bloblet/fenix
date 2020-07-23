@@ -8,24 +8,27 @@ import packets "fenix/packets"
 type Version struct {
 	id interface{}
 }
+
 // FromJSON instanciates a Version packet from a JSON map
 func (p Version) FromJSON(data map[string]interface{}) (packets.Packet, error) {
-    decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{ErrorUnused: true, Result: p})
-    err := decoder.Decode(data["d"])
+	decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{ErrorUnused: true, Result: p})
+	err := decoder.Decode(data["d"])
 
-    if (err != nil) {
-        return nil, errors.DataError{}
-    }
+	if err != nil {
+		return nil, errors.DataError{}
+	}
 
-    p.id = data["id"]
+	p.id = data["id"]
 
-    return &p, nil
+	return &p, nil
 }
+
 // SetID sets the ID for this packet.
-func (p *Version) SetID(id interface{})  {
-    p.id = id
+func (p *Version) SetID(id interface{}) {
+	p.id = id
 }
+
 // CopyToNewPacket copies all user essential data to a new packet
 func (p *Version) CopyToNewPacket(new packets.Packet) {
-    new.SetID(p.id)
+	new.SetID(p.id)
 }
