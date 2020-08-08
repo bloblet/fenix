@@ -12,7 +12,6 @@ func main() {
 	user := fl.String("user", "root", "User to connect to etcd with")
 	password := fl.String("password", "", "User's password")
 
-	
 	fl.Parse(os.Args[1:])
 
 	if *password == "" {
@@ -20,7 +19,7 @@ func main() {
 		fl.Usage()
 		os.Exit(1)
 	}
-	
+
 	a := api.NewAPI(*user, *password)
 	err := make(chan api.Error)
 

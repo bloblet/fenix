@@ -20,6 +20,7 @@ type Error struct {
 type create struct {
 	Username string `json:"username"`
 }
+
 // NewAPI makes a new API object with bells and whistles
 func NewAPI(username, password string) API {
 	api := API{}
@@ -30,12 +31,13 @@ func NewAPI(username, password string) API {
 
 // API Fenix API
 type API struct {
-	username string
-	password string
+	username     string
+	password     string
 	userDatabase databases.UserDatabase
-	isTesting bool
-	err chan Error
+	isTesting    bool
+	err          chan Error
 }
+
 func (api *API) badRequest(w http.ResponseWriter) {
 	api.error(w, "ERR_INVALIDREQUEST", "You probably sent invalid JSON.", http.StatusBadRequest)
 }
@@ -44,8 +46,8 @@ func (api *API) internalError(w http.ResponseWriter) {
 	api.error(w, "ERR_INTERNALERROR", "Something bad happened!", http.StatusInternalServerError)
 }
 
-func (api *API) maybeError(err error)  {
-	if (api.isTesting) {
+func (api *API) maybeError(err error) {
+	if api.isTesting {
 		e := Error{}
 		e.Error = err
 		e.Fatal = true
@@ -56,7 +58,7 @@ func (api *API) maybeError(err error)  {
 func (api *API) error(w http.ResponseWriter, errcode, msg string, statusCode int) {
 	output, err := json.Marshal(map[string]interface{}{"s": false, "e": errcode, "m": msg})
 	if err != nil {
-		
+
 		go api.maybeError(err)
 
 		w.WriteHeader(503)
