@@ -5,25 +5,44 @@ import (
 	crypto_rand "crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
+	"encoding/json"
 	"fenix/models"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"go.etcd.io/etcd/clientv3"
 	"golang.org/x/crypto/pbkdf2"
+
+	// THANK YOU ETCD
+	"go.etcd.io/etcd/clientv3/concurrency"
 )
 
 var (
 	dialTimeout    = 2 * time.Second
-	requestTimeout = 10 * time.Second
+	requestTimeout = 10000 * time.Second
 )
 
-const authDB = "auth/"
-const userDB = "user/"
-const nameDB = "name/"
+var authDB = "/auth/"
+var userDB = "/user/"
+var nameDB = "/name/"
+
+// NewUserDatabase makes a new user database
+func NewUserDatabase(username, password string, testing bool) UserDatabase {
+	if testing {
+		authDB = "/testing/auth/"
+		userDB = "/testing/user/"
+		nameDB = "/testing/name/"
+	}
+
+	db := UserDatabase{}
+	db.username = username
+	db.password = password
+	return db
+}
 
 func generateToken() string {
 	// Get 128 random bytes (1024 bits).
@@ -43,9 +62,7 @@ func generateToken() string {
 	return builder.String()
 }
 
-func makeDiscriminator() string {
-	d := string(rand.Intn(9998) + 1)
-
+func padDiscriminator(d string) string {
 	// Pad d so that its in the form of 0001
 	if len(d) != 4 {
 		for len(d) != 4 {
@@ -55,12 +72,12 @@ func makeDiscriminator() string {
 	return d
 }
 
-func userTxn(user *models.User, txn clientv3.Txn) (*clientv3.TxnResponse, error) {
-	txn.If(clientv3.Compare(clientv3.Value(nameDB+user.Username+"#"+user.Discriminator), "=", ""))
-	txn.Then(clientv3.OpPut(authDB+user.Email, user.ID), clientv3.OpPut(userDB+user.ID, user.ToJSON()))
-	return txn.Commit()
-
-}
+// func userTxn(user *models.User, txn clientv3.Txn) (*clientv3.TxnResponse, error) {
+// 	username := base64.URLEncoding.EncodeToString([]byte(user.Username+"#"+user.Discriminator))
+// 	txn.If(clientv3.Compare(clientv3.Value(nameDB+username), "!=", "t"))
+// 	txn.Then(clientv3.OpPut(authDB+user.Email, user.ID), clientv3.OpPut(nameDB+username, "t"), clientv3.OpPut(userDB+user.ID, user.ToJSON()))
+// 	return txn.Commit()
+// }
 
 func fatal(err error) {
 	now := time.Time{}
@@ -73,85 +90,172 @@ func fatal(err error) {
 
 // UserDatabase manages the user database
 type UserDatabase struct {
+	username string
+	password string
 }
-
 // database opens a database connection.  DO NOT FORGET TO defer cli.Close()
 func (db *UserDatabase) database() (*clientv3.Client, error) {
 	return clientv3.New(clientv3.Config{
 		DialTimeout: dialTimeout,
-		Endpoints:   []string{"127.0.0.1:2379"},
+		Username:    db.username,
+		Password:    db.password,
+		Endpoints:   []string{"98.212.66.76:2379"},
 	})
+}
+func (db *UserDatabase) sanitize(target string) string {
+	// Uses base64url encoding to sanitize client data, so it doesn't mess with paths.  
+	return base64.URLEncoding.EncodeToString([]byte(target))
+}
+
+func (db *UserDatabase) unsanitize(target string) (string, error) {
+	r, err := base64.URLEncoding.DecodeString(target)
+	return string(r), err
 }
 
 // UserExists checks the userDB to see if a user exists.
-func (db *UserDatabase) UserExists(email string) bool {
-	cli, err := db.database()
-	defer cli.Close()
-
-	if err != nil {
-		fatal(err)
-		return false
-	}
-
+func (db *UserDatabase) UserExists(email string, cli *clientv3.Client) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	kv := clientv3.NewKV(cli)
 
-	res, err := kv.Get(ctx, authDB+email)
+	res, err := kv.Get(ctx, authDB + email)
 	cancel()
 
-	if err != nil {
-		fatal(err)
+	if (err != nil) {
+		fmt.Print("UserExists error, ")
+		fmt.Println(err)
 		return false
 	}
-	fmt.Print(res.Count)
+
 	return res.Count == 1
 }
 
 // CreateUser will create a user, and pack it into a User object
 func (db *UserDatabase) CreateUser(email, password, username string) (models.User, error) {
-	if db.UserExists(email) {
-		return models.User{}, UserExists{}
+	// Get database client
+	cli, dberr := db.database()
+	defer cli.Close()
+	
+	// Make sure there wasn't any problems
+	if dberr != nil {
+		fatal(dberr)
+		return models.User{}, dberr
 	}
 
-	cli, err := db.database()
-	defer cli.Close()
+	// Sanitize user provided info
+	email = db.sanitize(email)
+	username = db.sanitize(username)
+	
+	// Open our concurrency session
+	s, lockErr := concurrency.NewSession(cli, concurrency.WithContext(context.Background()))
+	defer s.Close()
+	// Make sure there wasn't any problems
+	if (lockErr != nil) {
+		fatal(lockErr)
+		return models.User{}, lockErr
+	}
+	
+	
+
+	// Aquire locks
+	nameLock := concurrency.NewMutex(s, nameDB + username)
+	nameLock.Lock(context.Background())
+
+	// The authDB lock is to prevent race conditions with 2 emails being registered at once
+	authLock := concurrency.NewMutex(s, authDB + email) 
+	authLock.Lock(context.Background())
+
+	// Check if the email is already taken
+	if db.UserExists(email, cli) {
+		return models.User{}, UserExists{}
+	}
+	
+	// Check the username db for enteries
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	res, err := cli.Get(ctx, nameDB + username)
+	cancel()
+
+	// Make sure there wasn't any problems
+	if (err != nil) {
+		fatal(err)
+	}
+
+	// Unmarshal the JSON into a map
+
+	var discrims []int
+	json.Unmarshal(res.Kvs[0].Value, discrims)
+
+	// There *could* be no limit here, but say you were impersonating a popular account, this is good.
+	// Besides, Fenix probably won't ever get over 9999 users...
+	// -1 is the special key for not having any more discriminators.
+	if (discrims[0] == -1) {
+		return models.User{}, NoMoreDiscriminators{}
+	}
+
+	// This username has never been used before.
+	if len(discrims) == 0 {
+		for i := 0; i < 10000; i++ {
+			discrims[i] = i
+		}
+	}
+
+	// Make a li
+	discrimKeys := make([]int, len(discrims))
+
+	i := 0
+	for k := range discrims {
+		discrimKeys[i] = k
+		i++
+	}
+	pos := rand.Intn(len(discrims) - 1)
+	d := discrimKeys[pos]
+	discrims = append(discrims[:i], discrims[i+1:]...)
+
+	b, _ := json.Marshal(discrims)
+
+	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
+	_, err = cli.Put(ctx, nameDB + username, string(b))
 
 	if err != nil {
 		fatal(err)
-		return models.User{}, err
 	}
 
-	uid, _ := uuid.NewRandom()
+	cancel()
+	err = nameLock.Unlock(context.Background())
+
+	if err != nil {
+		fatal(err)
+	}
 
 	user := models.User{}
+	user.Discriminator = padDiscriminator(strconv.Itoa(d))
+	uid, _ := uuid.NewRandom()
 	user.Activity = models.Activity{}
-	user.Discriminator = makeDiscriminator()
 	user.ID = uid.String()
 	user.Salt = []byte(generateToken())
 	user.Token = generateToken()
 	user.Password = pbkdf2.Key([]byte(password), user.Salt, 200000, 64, sha512.New)
 	user.Settings = models.UserSettings{}
-	user.Username = username
-	user.Email = email
+	user.Username, _ = db.unsanitize(username)
+	user.Email, _ = db.unsanitize(email)
 
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	kv := clientv3.NewKV(cli)
-
-	for i := 0; i <= 9999; i++ {
-		res, _ := userTxn(&user, kv.Txn(ctx))
-		if res.Succeeded {
-			break
-		}
-		if i == 9999 {
-			cancel()
-			return models.User{}, NoMoreDiscriminators{}
-		}
-
-		user.Discriminator = makeDiscriminator()
-	}
-
+	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
+	_, err = cli.Put(ctx, authDB + email, user.ID)
 	cancel()
 
+	if err != nil {
+		fatal(err)
+	}
+
+	err = authLock.Unlock(context.Background())
+
+	if err != nil {
+		fatal(err)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
+
+	cli.Put(ctx, userDB + user.ID, user.ToJSON())
+	
 	return user, nil
 }
 

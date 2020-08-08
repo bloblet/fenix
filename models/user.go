@@ -1,8 +1,10 @@
 package models
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"math/big"
 )
 
 // User is the current datatype for fenix users.
@@ -18,6 +20,7 @@ type User struct {
 	Friends       []string
 	Activity      Activity
 	Settings      UserSettings
+	PublicKey     ecdsa.PublicKey
 }
 
 // ToJSON converts the user to JSON
@@ -31,4 +34,9 @@ func (user *User) ToJSON() string {
 	}
 
 	return string(b)
+}
+
+// Verify a message was signed with a user's key
+func (user *User) Verify(hash []byte, r, s *big.Int) bool {
+	return ecdsa.Verify(&user.PublicKey, hash, r, s)
 }

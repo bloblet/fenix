@@ -5,5 +5,7 @@
         "enabled": true,
         "delay": 500
     },
-    "go.buildOnSave": "package"
+	//  "go.buildOnSave": "package"
+	"terminal.integrated.shell.linux": "/home/matthewfrancis/go/src/fenix/env/bash",
+	"terminal.integrated.allowChords": false
 }
