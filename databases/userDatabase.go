@@ -62,7 +62,6 @@ func generateToken() string {
 	return builder.String()
 }
 
-
 func fatal(err error) {
 	now := time.Time{}
 	fmt.Print(now)
@@ -77,6 +76,7 @@ type UserDatabase struct {
 	username string
 	password string
 }
+
 // database opens a database connection.  DO NOT FORGET TO defer cli.Close()
 func (db *UserDatabase) database() (*clientv3.Client, error) {
 	return clientv3.New(clientv3.Config{
@@ -98,7 +98,7 @@ func (db *UserDatabase) padDiscriminator(d string) string {
 }
 
 func (db *UserDatabase) sanitize(target string) string {
-	// Uses base64url encoding to sanitize client data, so it doesn't mess with paths.  
+	// Uses base64url encoding to sanitize client data, so it doesn't mess with paths.
 	return base64.URLEncoding.EncodeToString([]byte(target))
 }
 
@@ -112,10 +112,10 @@ func (db *UserDatabase) UserExists(email string, cli *clientv3.Client) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	kv := clientv3.NewKV(cli)
 
-	res, err := kv.Get(ctx, authDB + email)
+	res, err := kv.Get(ctx, authDB+email)
 	cancel()
 
-	if (err != nil) {
+	if err != nil {
 		fmt.Print("UserExists error, ")
 		fmt.Println(err)
 		return false
@@ -129,7 +129,7 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	// Get database client
 	cli, dberr := db.database()
 	defer cli.Close()
-	
+
 	// Make sure there wasn't any problems
 	if dberr != nil {
 		fatal(dberr)
@@ -139,38 +139,37 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	// Sanitize user provided info
 	email = db.sanitize(email)
 	username = db.sanitize(username)
-	
+
 	// Open our concurrency session
 	s, lockErr := concurrency.NewSession(cli, concurrency.WithContext(context.Background()))
 	defer s.Close()
+
 	// Make sure there wasn't any problems
-	if (lockErr != nil) {
+	if lockErr != nil {
 		fatal(lockErr)
 		return models.User{}, lockErr
 	}
-	
-	
 
 	// Aquire locks
-	nameLock := concurrency.NewMutex(s, nameDB + username)
+	nameLock := concurrency.NewMutex(s, nameDB+username)
 	nameLock.Lock(context.Background())
 
 	// The authDB lock is to prevent race conditions with 2 emails being registered at once
-	authLock := concurrency.NewMutex(s, authDB + email) 
+	authLock := concurrency.NewMutex(s, authDB+email)
 	authLock.Lock(context.Background())
 
 	// Check if the email is already taken
 	if db.UserExists(email, cli) {
 		return models.User{}, UserExists{}
 	}
-	
+
 	// Check the username db for enteries
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	res, err := cli.Get(ctx, nameDB + username)
+	res, err := cli.Get(ctx, nameDB+username)
 	cancel()
 
 	// Make sure there wasn't any problems
-	if (err != nil) {
+	if err != nil {
 		fatal(err)
 	}
 
@@ -182,7 +181,7 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	// There *could* be no limit here, but say you were impersonating a popular account, this is good.
 	// Besides, Fenix probably won't ever get over 9999 users...
 	// -1 is the special key for not having any more discriminators.
-	if (discrims[0] == -1) {
+	if discrims[0] == -1 {
 		return models.User{}, NoMoreDiscriminators{}
 	}
 
@@ -208,7 +207,7 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	b, _ := json.Marshal(discrims)
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	_, err = cli.Put(ctx, nameDB + username, string(b))
+	_, err = cli.Put(ctx, nameDB+username, string(b))
 
 	if err != nil {
 		fatal(err)
@@ -234,7 +233,7 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	user.Email, _ = db.unsanitize(email)
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	_, err = cli.Put(ctx, authDB + email, user.ID)
+	_, err = cli.Put(ctx, authDB+email, user.ID)
 	cancel()
 
 	if err != nil {
@@ -249,8 +248,8 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
 
-	cli.Put(ctx, userDB + user.ID, user.ToJSON())
-	
+	cli.Put(ctx, userDB+user.ID, user.ToJSON())
+
 	return user, nil
 }
 
