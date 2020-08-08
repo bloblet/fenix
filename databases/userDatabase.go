@@ -23,7 +23,7 @@ import (
 
 var (
 	dialTimeout    = 2 * time.Second
-	requestTimeout = 10000 * time.Second
+	requestTimeout = 10 * time.Second
 )
 
 var authDB = "/auth/"
@@ -62,22 +62,6 @@ func generateToken() string {
 	return builder.String()
 }
 
-func padDiscriminator(d string) string {
-	// Pad d so that its in the form of 0001
-	if len(d) != 4 {
-		for len(d) != 4 {
-			d = "0" + d
-		}
-	}
-	return d
-}
-
-// func userTxn(user *models.User, txn clientv3.Txn) (*clientv3.TxnResponse, error) {
-// 	username := base64.URLEncoding.EncodeToString([]byte(user.Username+"#"+user.Discriminator))
-// 	txn.If(clientv3.Compare(clientv3.Value(nameDB+username), "!=", "t"))
-// 	txn.Then(clientv3.OpPut(authDB+user.Email, user.ID), clientv3.OpPut(nameDB+username, "t"), clientv3.OpPut(userDB+user.ID, user.ToJSON()))
-// 	return txn.Commit()
-// }
 
 func fatal(err error) {
 	now := time.Time{}
@@ -102,6 +86,17 @@ func (db *UserDatabase) database() (*clientv3.Client, error) {
 		Endpoints:   []string{"98.212.66.76:2379"},
 	})
 }
+
+func (db *UserDatabase) padDiscriminator(d string) string {
+	// Pad d so that its in the form of 0001
+	if len(d) != 4 {
+		for len(d) != 4 {
+			d = "0" + d
+		}
+	}
+	return d
+}
+
 func (db *UserDatabase) sanitize(target string) string {
 	// Uses base64url encoding to sanitize client data, so it doesn't mess with paths.  
 	return base64.URLEncoding.EncodeToString([]byte(target))
@@ -227,7 +222,7 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	}
 
 	user := models.User{}
-	user.Discriminator = padDiscriminator(strconv.Itoa(d))
+	user.Discriminator = db.padDiscriminator(strconv.Itoa(d))
 	uid, _ := uuid.NewRandom()
 	user.Activity = models.Activity{}
 	user.ID = uid.String()
