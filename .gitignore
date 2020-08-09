@@ -1,3 +1,5 @@
+# Large emoji database file, doesn't need to be in the repo yet.
 emojis.json
-data/
+
+# My env files for fenix.
 env
