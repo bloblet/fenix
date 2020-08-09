@@ -57,8 +57,9 @@ func (api *API) maybeError(err error) {
 
 func (api *API) error(w http.ResponseWriter, errcode, msg string, statusCode int) {
 	output, err := json.Marshal(map[string]interface{}{"s": false, "e": errcode, "m": msg})
-	if err != nil {
 
+	// This only runs if the json marshal fails.  So this is reaaaaly bad.
+	if err != nil {
 		go api.maybeError(err)
 
 		w.WriteHeader(503)
@@ -68,7 +69,7 @@ func (api *API) error(w http.ResponseWriter, errcode, msg string, statusCode int
 		return
 	}
 
-	w.WriteHeader(statusCode)
+	w.WriteHeader(500)
 	w.Header().Set("content-type", "application/json")
 
 	w.Write(output)
@@ -82,7 +83,6 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 		return
 	}
 
-	print(email)
 	b, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -103,7 +103,6 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 	}
 
 	user, err := api.userDatabase.CreateUser(email, password, msg.Username)
-
 	if (err == databases.UserExists{}) {
 		api.error(w, "ERR_USEREXISTS", "That user already exists!", http.StatusForbidden)
 		return

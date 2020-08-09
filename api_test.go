@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	api "fenix/api"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -75,11 +76,20 @@ func TestValidCreate(t *testing.T) {
 		t.Error(err)
 	}
 
-	json.Unmarshal(bodyBytes, body)
+	err = json.Unmarshal(bodyBytes, body)
+
+	if err != nil {
+		fmt.Print(err)
+		t.Error(err)
+	}
+
+	println("-----------")
+	println(res.StatusCode)
+	println("-----------")
 
 	if res.StatusCode != 201 {
-		t.Logf("FAIL: Status code: %v", res.StatusCode)
-		t.Logf("FAIL: Body: %v", body)
-		t.FailNow()
+		fmt.Printf("FAIL: Status code: %v", res.StatusCode)
+		fmt.Printf("FAIL: Body: %v", body)
+		t.Fail()
 	}
 }

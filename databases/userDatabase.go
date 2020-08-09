@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/pbkdf2"
 
 	// THANK YOU ETCD
@@ -160,13 +160,14 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 
 	// Check if the email is already taken
 	if db.UserExists(email, cli) {
+		go nameLock.Unlock(context.Background())
+		go authLock.Unlock(context.Background())
 		return models.User{}, UserExists{}
 	}
-
 	// Check the username db for enteries
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	res, err := cli.Get(ctx, nameDB+username)
-	cancel()
+	// cancel()
 
 	// Make sure there wasn't any problems
 	if err != nil {
@@ -176,7 +177,7 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	// Unmarshal the JSON into a map
 
 	var discrims []int
-	json.Unmarshal(res.Kvs[0].Value, discrims)
+	json.Unmarshal(res.Kvs[0].Value, &discrims)
 
 	// There *could* be no limit here, but say you were impersonating a popular account, this is good.
 	// Besides, Fenix probably won't ever get over 9999 users...
@@ -247,8 +248,8 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-
 	cli.Put(ctx, userDB+user.ID, user.ToJSON())
+	cancel()
 
 	return user, nil
 }
