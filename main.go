@@ -20,8 +20,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	a := api.NewAPI(*user, *password)
-	err := make(chan api.Error)
-
-	a.Serve(err, false)
+	a := api.NewAPI(*user, *password, "")
+	a.Serve(false)
 }

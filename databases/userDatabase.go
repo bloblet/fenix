@@ -15,14 +15,16 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/pbkdf2"
+	"google.golang.org/grpc"
 
 	// THANK YOU ETCD
 	"github.com/coreos/etcd/clientv3/concurrency"
 )
 
 var (
-	dialTimeout    = 2 * time.Second
+	dialTimeout    = 5 * time.Second
 	requestTimeout = 10 * time.Second
 )
 
@@ -31,11 +33,11 @@ var userDB = "/user/"
 var nameDB = "/name/"
 
 // NewUserDatabase makes a new user database
-func NewUserDatabase(username, password string, testing bool) UserDatabase {
+func NewUserDatabase(username, password string, testing bool, prefix string) UserDatabase {
 	if testing {
-		authDB = "/testing/auth/"
-		userDB = "/testing/user/"
-		nameDB = "/testing/name/"
+		authDB = "/testing/" + prefix + "/auth/"
+		userDB = "/testing/" + prefix + "/user/"
+		nameDB = "/testing/" + prefix + "/name/"
 	}
 
 	db := UserDatabase{}
@@ -77,13 +79,21 @@ type UserDatabase struct {
 	password string
 }
 
-// database opens a database connection.  DO NOT FORGET TO defer cli.Close()
-func (db *UserDatabase) database() (*clientv3.Client, error) {
+// Database opens a Database connection.  DO NOT FORGET TO defer cli.Close()
+func (db *UserDatabase) Database() (*clientv3.Client, error) {
+	var options []grpc.DialOption
+	options = append(options, grpc.WithBlock(), grpc.WithTimeout(dialTimeout))
+	c := zap.NewProductionConfig()
+	c.Level = zap.NewAtomicLevel()
+	c.Level.SetLevel(zap.FatalLevel)
+
 	return clientv3.New(clientv3.Config{
-		DialTimeout: dialTimeout,
-		Username:    db.username,
-		Password:    db.password,
-		Endpoints:   []string{"98.212.66.76:2379"},
+		LogConfig: &c,
+		DialOptions:          options,		
+		DialTimeout:          dialTimeout,
+		Username:             db.username,
+		Password:             db.password,
+		Endpoints:            []string{"98.212.66.76:2379"},
 	})
 }
 
@@ -127,7 +137,7 @@ func (db *UserDatabase) UserExists(email string, cli *clientv3.Client) bool {
 // CreateUser will create a user, and pack it into a User object
 func (db *UserDatabase) CreateUser(email, password, username string) (models.User, error) {
 	// Get database client
-	cli, dberr := db.database()
+	cli, dberr := db.Database()
 	defer cli.Close()
 
 	// Make sure there wasn't any problems
@@ -174,11 +184,19 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 		fatal(err)
 	}
 
-	// Unmarshal the JSON into a map
-
 	var discrims []int
-	json.Unmarshal(res.Kvs[0].Value, &discrims)
 
+	// This username has never been used before.
+	if res.Count == 0 {
+		discrims = make([]int, 10000)
+
+		for i := 0; i < 10000; i++ {
+			discrims[i] = i
+		}
+	} else {
+		// Unmarshal the JSON into a map
+		json.Unmarshal(res.Kvs[0].Value, &discrims)
+	}
 	// There *could* be no limit here, but say you were impersonating a popular account, this is good.
 	// Besides, Fenix probably won't ever get over 9999 users...
 	// -1 is the special key for not having any more discriminators.
@@ -186,14 +204,6 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 		return models.User{}, NoMoreDiscriminators{}
 	}
 
-	// This username has never been used before.
-	if len(discrims) == 0 {
-		for i := 0; i < 10000; i++ {
-			discrims[i] = i
-		}
-	}
-
-	// Make a li
 	discrimKeys := make([]int, len(discrims))
 
 	i := 0
@@ -201,9 +211,10 @@ func (db *UserDatabase) CreateUser(email, password, username string) (models.Use
 		discrimKeys[i] = k
 		i++
 	}
+
 	pos := rand.Intn(len(discrims) - 1)
 	d := discrimKeys[pos]
-	discrims = append(discrims[:i], discrims[i+1:]...)
+	discrims = append(discrims[:pos], discrims[pos+1:]...)
 
 	b, _ := json.Marshal(discrims)
 

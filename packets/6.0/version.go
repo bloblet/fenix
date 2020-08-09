@@ -4,12 +4,9 @@ import "github.com/mitchellh/mapstructure"
 import "fenix/errors"
 import packets "fenix/packets"
 
-// Version packet
 type Version struct {
 	id interface{}
 }
-
-// FromJSON instanciates a Version packet from a JSON map
 func (p Version) FromJSON(data map[string]interface{}) (packets.Packet, error) {
 	decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{ErrorUnused: true, Result: p})
 	err := decoder.Decode(data["d"])
@@ -22,8 +19,6 @@ func (p Version) FromJSON(data map[string]interface{}) (packets.Packet, error) {
 
 	return &p, nil
 }
-
-// SetID sets the ID for this packet.
 func (p *Version) SetID(id interface{}) {
 	p.id = id
 }
