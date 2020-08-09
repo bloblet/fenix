@@ -42,10 +42,10 @@ func setupTestCase(t *testing.T) func(bool) {
 	}
 }
 
-func CreateUser(bodyJson, email, password string) (int, map[string]interface{}, error) {
+func CreateUser(bodyJSON, email, password string) (int, map[string]interface{}, error) {
 	b := bytes.Buffer{}
 
-	b.Write([]byte(bodyJson))
+	b.Write([]byte(bodyJSON))
 
 	req, err := http.NewRequest("POST", endpoint+"/6.0.1/create", &b)
 
