@@ -113,18 +113,18 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 	// Create the user
 	user, err := api.UserDatabase.CreateUser(email, password, msg.Username)
 
-	// Fail if the user already is 
+	// Fail if the user already is
 	if (err == databases.UserExists{}) {
 		api.error(w, "ERR_USEREXISTS", "That user already exists!", http.StatusForbidden)
 		return
-	} 
+	}
 
 	// Fail if there's no more discriminators
 	if (err == databases.NoMoreDiscriminators{}) {
 		api.error(w, "ERR_NOMOREDISCRIMINATORS", "Too many users have that username!", 409)
 		return
 	}
-	
+
 	// If there was a error connecting to the database, its our fault.
 	if err != nil {
 		api.internalError(w)
@@ -137,7 +137,7 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 		api.internalError(w)
 		return
 	}
-	
+
 	// Respond
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("content-type", "application/json")

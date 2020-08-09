@@ -88,12 +88,12 @@ func (db *UserDatabase) Database() (*clientv3.Client, error) {
 	c.Level.SetLevel(zap.FatalLevel)
 
 	return clientv3.New(clientv3.Config{
-		LogConfig: &c,
-		DialOptions:          options,		
-		DialTimeout:          dialTimeout,
-		Username:             db.username,
-		Password:             db.password,
-		Endpoints:            []string{"98.212.66.76:2379"},
+		LogConfig:   &c,
+		DialOptions: options,
+		DialTimeout: dialTimeout,
+		Username:    db.username,
+		Password:    db.password,
+		Endpoints:   []string{"98.212.66.76:2379"},
 	})
 }
 

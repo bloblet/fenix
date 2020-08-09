@@ -83,7 +83,7 @@ func CreateUser(bodyJson, email, password string) (int, map[string]interface{}, 
 
 type createCase struct {
 	name, email, password, json string
-	okResult bool
+	okResult                    bool
 }
 
 func newCreateCase(json, email, password, name string, okResult bool) createCase {
@@ -105,30 +105,30 @@ func TestCreate(t *testing.T) {
 	testCases[1] = newCreateCase("{\"username\":\"Rick Astley\"}", "rick.astley@rickroll.com", "yay", "CreateDuplicateUser", false)
 	testCases[2] = newCreateCase("{\"username\":\"Rick Astley Likes To Rickroll People With Long Usernames That Are Over 32 Characters\"}", "astley.rick@rickroll.com", "yay", "CreateUserWithLongName", false)
 	testCases[3] = newCreateCase("invalid json", "invalid.astley@rickroll.com", "yay", "CreateUserWithInvalidJson", false)
-	
+
 	for testIndex, testCase := range testCases {
-		t.Run(testCase.name, func (t *testing.T)  {
+		t.Run(testCase.name, func(t *testing.T) {
 			statusCode, body, err := CreateUser(testCase.json, testCase.email, testCase.password)
-		// This should never return an error, since any errors we expect are just API errors.  If this happens, something is wrong.
-		if err != nil {
-			// Values are surrounded by zero width spaces (​) (Unicode U+200B)
-			t.Errorf("Failed on ​%v​.  Status code: ​%v​.  Body: ​%v​.  Error: ​%v​", testIndex, statusCode, body, err)
+			// This should never return an error, since any errors we expect are just API errors.  If this happens, something is wrong.
+			if err != nil {
+				// Values are surrounded by zero width spaces (​) (Unicode U+200B)
+				t.Errorf("Failed on ​%v​.  Status code: ​%v​.  Body: ​%v​.  Error: ​%v​", testIndex, statusCode, body, err)
 
-			return
-		}
-
-		// 201 Creates is the correct response for this.
-		if (statusCode == 201) == testCase.okResult {
-			t.Logf("%v ok", testIndex)
-		} else {
-			expected := "succeed"
-			if !testCase.okResult {
-				expected = "fail"
+				return
 			}
 
-			t.Logf("Failed on ​%v​.  Status code: ​%v​.  Body: ​%v​.  Expected function to %v", testIndex, statusCode, body, expected)
-			t.Fail()
-		}
+			// 201 Creates is the correct response for this.
+			if (statusCode == 201) == testCase.okResult {
+				t.Logf("%v ok", testIndex)
+			} else {
+				expected := "succeed"
+				if !testCase.okResult {
+					expected = "fail"
+				}
+
+				t.Logf("Failed on ​%v​.  Status code: ​%v​.  Body: ​%v​.  Expected function to %v", testIndex, statusCode, body, expected)
+				t.Fail()
+			}
 		})
 	}
 

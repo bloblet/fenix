@@ -7,6 +7,7 @@ import packets "fenix/packets"
 type Version struct {
 	id interface{}
 }
+
 func (p Version) FromJSON(data map[string]interface{}) (packets.Packet, error) {
 	decoder, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{ErrorUnused: true, Result: p})
 	err := decoder.Decode(data["d"])
