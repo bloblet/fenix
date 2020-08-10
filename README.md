@@ -57,5 +57,13 @@ Returns:
 
 [User](#User)
 
+# Dataclasses
+
 # User
-TODO
+Parameters:
+- `ID`: User's ID (String)
+- `Token`: User's access token (String)
+- `Email`: User's associated email (String)
+- `Username`: User's current username (String)
+- `Discriminator`: User's current discriminator (String)
+- `Servers`: 
