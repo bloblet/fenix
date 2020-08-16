@@ -3,11 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fenix/databases"
-	"io/ioutil"
-	"net/http"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
+	"io/ioutil"
+	"net/http"
 	// "github.com/gorilla/websocket"
 )
 

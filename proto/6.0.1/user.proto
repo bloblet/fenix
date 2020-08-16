@@ -19,4 +19,4 @@ message User {
 
 	// Misc
 	optional UserSettings settings = 10;
-}	YAY
+}
