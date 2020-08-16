@@ -1,4 +1,4 @@
-package models
+package database
 
 type Server struct {
 	ServerID string

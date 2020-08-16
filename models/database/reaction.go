@@ -1,4 +1,4 @@
-package models
+package database
 
 type Reaction struct {
 	Emoji  RawEmoji

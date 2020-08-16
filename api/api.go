@@ -5,7 +5,8 @@ import (
 	"fenix/databases"
 	"io/ioutil"
 	"net/http"
-
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	// "github.com/gorilla/websocket"
 )
@@ -37,6 +38,7 @@ type API struct {
 	UserDatabase databases.UserDatabase
 	isTesting    bool
 	err          chan Error
+	upgrader     websocket.Upgrader
 }
 
 func (api *API) badRequest(w http.ResponseWriter) {
@@ -73,7 +75,7 @@ func (api *API) error(w http.ResponseWriter, errcode, msg string, statusCode int
 	w.Write(output)
 }
 
-func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+func (api *API) create(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	email, password, ok := r.BasicAuth()
 
 	// Fail if the BasicAuth is invalid
@@ -121,7 +123,7 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 
 	// Fail if there's no more discriminators
 	if (err == databases.NoMoreDiscriminators{}) {
-		api.error(w, "ERR_NOMOREDISCRIMINATORS", "Too many users have that username!", 409)
+		api.error(w, "ERR_NOMOREDISCRIMINATORS", "Too many users have that username!", 403)
 		return
 	}
 
@@ -145,11 +147,17 @@ func (api *API) create(w http.ResponseWriter, r *http.Request, params httprouter
 	w.Write(output)
 }
 
+func (api *API) upgrade(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// api.upgrader.Upgrade(w, r, http.Header{"Set-Cookie": []"y"})
+}
 func (api *API) Serve(isTesting bool) {
+	router := gin.Default()
+	api.upgrader = websocket.Upgrader{}
 	api.isTesting = isTesting
 	api.UserDatabase = databases.NewUserDatabase(api.username, api.password, isTesting, api.prefix)
-	router := httprouter.New()
-	router.POST("/6.0.1/create", api.create)
+	// router := httprouter.New()
+	// user := router.Group("/api/6.0.1/user")
+	// user.
 
 	go http.ListenAndServe("0.0.0.0:8080", router)
 }

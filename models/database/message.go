@@ -1,4 +1,4 @@
-package models
+package database
 
 type Message struct {
 	ID        string

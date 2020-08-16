@@ -1,0 +1,22 @@
+syntax = "proto 3";
+
+message User {
+	// Identification
+	string ID = 0;
+	string username = 1;
+	string discriminator = 2;
+
+	// Social	
+	Activity activity = 3;
+	optional repeated string servers = 4;
+	optional repeated string friends = 5;
+
+	// Authentication
+	optional string token = 6;
+	optional string email = 7;
+	optional bytes Salt = 8;
+	optional bytes Password = 9;
+
+	// Misc
+	optional UserSettings settings = 10;
+}	YAY

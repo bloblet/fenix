@@ -1,4 +1,4 @@
-package models
+package database
 
 type Friend struct {
 	username      string

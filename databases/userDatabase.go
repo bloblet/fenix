@@ -6,7 +6,7 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
-	"fenix/models"
+	models "fenix/models/database"
 	"fmt"
 	"math/rand"
 	"strconv"
