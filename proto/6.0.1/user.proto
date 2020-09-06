@@ -1,22 +1,35 @@
-syntax = "proto 3";
+syntax = "proto3";
+option go_package = "proto/6.0.1;fenix";
 
 message User {
 	// Identification
-	string ID = 0;
-	string username = 1;
-	string discriminator = 2;
+	string ID = 1;
+	string username = 2;
+	string discriminator = 3;
 
 	// Social	
-	Activity activity = 3;
-	optional repeated string servers = 4;
-	optional repeated string friends = 5;
+	Activity activity = 4;
+	repeated string servers = 5;
+	repeated string friends = 6;
 
 	// Authentication
-	optional string token = 6;
-	optional string email = 7;
-	optional bytes Salt = 8;
-	optional bytes Password = 9;
+	string token = 7;
+	string email = 8;
+	bytes Salt = 9;
+	bytes Password = 10;
 
 	// Misc
-	optional UserSettings settings = 10;
+	UserSettings settings = 11;
+}
+
+message UserSettings {}
+message Activity {}
+
+message Authenticate {
+	string token = 1;
+	string ID = 2;
+}
+
+service Users {
+  rpc Get(Authenticate) returns (User) {}
 }
