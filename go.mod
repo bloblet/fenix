@@ -1,4 +1,4 @@
-module fenix
+module github.com/bloblet/fenix
 
 go 1.14
 
@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	google.golang.org/grpc v1.30.1
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200902210233-8630cac324bf // indirect
+	google.golang.org/grpc v1.33.0-dev
+	// google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200902210233-8630cac324bf // indirect
 	google.golang.org/protobuf v1.25.0
 )
