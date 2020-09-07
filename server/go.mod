@@ -1,4 +1,4 @@
-module github.com/bloblet/fenix
+module fenix
 
 go 1.14
 

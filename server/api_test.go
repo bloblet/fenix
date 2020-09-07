@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	api "fenix/api"
+	api "bloblet/fenix/api"
 	"io/ioutil"
 	"net/http"
 	"os"
