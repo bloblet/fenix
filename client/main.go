@@ -5,6 +5,7 @@ import (
 	pb "fenix/proto/6.0.1"
 	"log"
 	"time"
+
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +19,6 @@ func main() {
 	c := pb.NewUsersClient(conn)
 
 	// Contact the server and print out its response.
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	r, err := c.Get(ctx, &pb.Authenticate{Token: "Ayy", ID: "Yay"})

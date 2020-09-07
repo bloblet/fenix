@@ -27,7 +27,7 @@ func (api *GRPCApi) Serve() {
 		log.Fatalf("failed to serve: %v", err)
 	}
 }
-func (api *GRPCApi) Get(ctx context.Context, in *pb.Authenticate) (*pb.User, error) {
+func (api *GRPCApi) Get(_ context.Context, in *pb.Authenticate) (*pb.User, error) {
 	log.Printf("Received: %v", in.GetID())
 	return &pb.User{ID: in.GetID() + in.GetToken()}, nil
 }
