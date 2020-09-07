@@ -1,6 +1,6 @@
 package packets
 
-import e "fenix/errors"
+import e "fenix/server/errors"
 
 // SupportedVersions is a map of current packet versions
 var SupportedVersions = map[interface{}]bool{"6.0": true}

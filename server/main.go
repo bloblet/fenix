@@ -1,7 +1,7 @@
 package main
 
 import (
-	api "fenix/api"
+	api "fenix/server/api"
 	// "flag"
 	// "fmt"
 	// "os"
