@@ -14,7 +14,7 @@ type GRPCApi struct {
 }
 
 func (api *GRPCApi) Serve() {
-	lis, err := net.Listen("tcp", "localhost:3000")
+	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -29,5 +29,5 @@ func (api *GRPCApi) Serve() {
 }
 func (api *GRPCApi) Get(ctx context.Context, in *pb.Authenticate) (*pb.User, error) {
 	log.Printf("Received: %v", in.GetID())
-	return &pb.User{ID: in.GetID()}, nil
+	return &pb.User{ID: in.GetID() + in.GetToken()}, nil
 }
