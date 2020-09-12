@@ -22,8 +22,10 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	r, err := c.Get(ctx, &pb.Authenticate{Token: "Ayy", ID: "Yay"})
+	
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
+
 	log.Printf("Greeting: %s", r.GetID())
 }

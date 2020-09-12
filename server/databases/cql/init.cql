@@ -6,4 +6,20 @@ CREATE KEYSPACE IF NOT EXISTS Messages WITH REPLICATION = { 'class' : 'SimpleStr
 CREATE KEYSPACE IF NOT EXISTS Comments WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
 CREATE KEYSPACE IF NOT EXISTS Reactions WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
 
-prepare 
+
+
+CREATE TABLE Users.User (
+	primary key(UserID text),
+	Username text,
+	Discriminator text,
+
+	Activity text,
+	Servers list<text>,
+	Friends list<text>,
+
+	Token text,
+	Email text,
+	Salt blob,
+	Password blob
+);
+

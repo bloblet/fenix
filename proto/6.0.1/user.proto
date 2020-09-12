@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "proto/6.0.1;fenix";
+option go_package = "proto";
 
 message User {
 	// Identification
@@ -30,6 +30,14 @@ message Authenticate {
 	string ID = 2;
 }
 
+message CreateUser {
+	string username = 1;
+	string password = 2;
+	string email = 3;
+}
+
 service Users {
   rpc Get(Authenticate) returns (User) {}
+  rpc New(CreateUser) returns User {}
+  rpc
 }
