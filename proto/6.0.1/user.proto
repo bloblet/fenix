@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "proto";
+option go_package = "fenix/proto";
 
 message User {
 	// Identification
@@ -38,5 +38,5 @@ message CreateUser {
 
 service Users {
   rpc Get(Authenticate) returns (User) {}
-  rpc New(CreateUser) returns User {}
+  rpc New(CreateUser) returns (User) {}
 }
