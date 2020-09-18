@@ -1,6 +1,6 @@
 package models
 
-type JsonSerializable interface {
+type JSONSerializable interface {
 	ToJson() map[string]interface{}
 	FromJson(map[string]interface{}) interface{}
 }
