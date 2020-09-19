@@ -30,9 +30,9 @@ func main() {
 		log.Fatalf("Server refused handshake: %v", err)
 	}
 
-	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "josiah_wi"})
+	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "Yay"})
 	if err != nil {
 		log.Fatalf("Failed to log in with username.")
 	}
-	log.Printf("Logged in as %v.", loginAck.GetUsername)
+	log.Printf("Logged in as %s.", loginAck.GetUsername())
 }
