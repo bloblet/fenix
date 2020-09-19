@@ -3,3 +3,4 @@ env
 *.sum
 fenix-server
 fenix-client
+*.pb.go
