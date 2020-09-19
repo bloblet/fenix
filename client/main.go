@@ -30,7 +30,7 @@ func main() {
 		log.Fatalf("Server refused handshake: %v", err)
 	}
 
-	loginAck, err := c.Login(ctx, &pb.Username{Username: "josiah_wi"})
+	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "josiah_wi"})
 	if err != nil {
 		log.Fatalf("Failed to log in with username.")
 	}
