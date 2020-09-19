@@ -1,3 +1,5 @@
 env
 .vscode
 *.sum
+fenix-server
+fenix-client
