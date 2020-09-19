@@ -8,10 +8,13 @@ import (
 
 	"google.golang.org/grpc"
 )
-
+ 
 func main() {
+   timeout := 10 * time.Second	
+
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("bloblet.com:4000", grpc.WithInsecure(), grpc.WithBlock())
+
+	conn, err := grpc.Dial("bloblet.com:4000", grpc.WithInsecure(), grpc.WithTimeout(timeout), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
