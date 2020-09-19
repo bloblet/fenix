@@ -1,8 +1,8 @@
 package packets
 
 import "github.com/mitchellh/mapstructure"
-import "fenix/server/errors"
-import packets "fenix/server/packets"
+import "github.com/bloblet/fenix/server/errors"
+import packets "github.com/bloblet/fenix/server/packets"
 
 type Version struct {
 	id interface{}

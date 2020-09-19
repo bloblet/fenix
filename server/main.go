@@ -1,7 +1,7 @@
 package main
 
 import (
-	api "fenix/server/api"
+	api "github.com/bloblet/fenix/server/api"
 	// "flag"
 	// "fmt"
 	// "os"

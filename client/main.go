@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	pb "fenix/proto/6.0.1"
+	pb "github.com/bloblet/fenix/proto/6.0.1"
 	"log"
 	"time"
 
