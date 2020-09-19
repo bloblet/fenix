@@ -1,12 +1,19 @@
 syntax = "proto3";
 option go_package = "github.com/bloblet/fenix/proto/6.0.1/proto";
 
+message OpenHandshake {}
+
 message FetchClientAuth {}
 
-message ClientAuthAck {
+message Username {
 	string username = 1;
 }
 
+message AuthAck {
+    string username = 1;
+}
+
 service Auth {
-	rpc ClientAuth(FetchClientAuth) returns (ClientAuthAck) {}
+	rpc Connect (OpenHandshake) returns (FetchClientAuth) {}
+	rpc Login (Username) returns (AuthAck) {}
 }
