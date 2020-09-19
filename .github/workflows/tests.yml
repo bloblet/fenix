@@ -31,10 +31,10 @@ jobs:
         fi
 
     - name: Build Server
-      run: go build -v ./server/main.go
+      run: go build -v -o fenix-server ./server
 
     - name: Build client
-      run: go build -v ./client/main.go
+      run: go build -v -o fenix-client ./client
 
 #    - name: Test
       
