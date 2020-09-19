@@ -8,9 +8,9 @@ import (
 
 	"google.golang.org/grpc"
 )
- 
+
 func main() {
-   timeout := 10 * time.Second	
+	timeout := 10 * time.Second
 
 	// Set up a connection to the server.
 
@@ -25,7 +25,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	r, err := c.Get(ctx, &pb.Authenticate{Token: "Ayy", ID: "Yay"})
-	
+
 	if err != nil {
 		log.Fatalf("could not greet: %v", err)
 	}
