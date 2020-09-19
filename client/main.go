@@ -19,16 +19,20 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewUsersClient(conn)
+	c := pb.NewAuthClient(conn)
 
-	// Contact the server and print out its response.
+	// Contact the server and get our username accepted.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.Get(ctx, &pb.Authenticate{Token: "Ayy", ID: "Yay"})
 
+	_, err = c.Connect(ctx, &pb.OpenHandshake{})
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		log.Fatalf("Server refused handshake: %v", err)
 	}
 
-	log.Printf("Greeting: %s", r.GetID())
+	loginAck, err := c.Login(ctx, &pb.Username{Username: "josiah_wi"})
+	if err != nil {
+		log.Fatalf("Failed to log in with username.")
+	}
+	log.Printf("Logged in as %v.", loginAck.GetUsername)
 }
