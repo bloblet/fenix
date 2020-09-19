@@ -9,10 +9,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GRPCApi struct {
-	s *grpc.Server
+func NewGRPCApi() *GRPCApi {
+	api := GRPCApi{}
+	api.c = make(chan interface{}) // TODO: Change to pb.Message class
+	return &api
 }
 
+type GRPCApi struct {
+	s *grpc.Server
+	c chan interface{} // TODO: Change to pb.Message class
+}
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
 	pb.RegisterUsersService(api.s, &pb.UsersService{Get: api.get})
@@ -29,4 +35,8 @@ func (api *GRPCApi) Serve() {
 func (api *GRPCApi) get(_ context.Context, in *pb.Authenticate) (*pb.User, error) {
 	log.Printf("Received: %v", in.GetID())
 	return &pb.User{ID: in.GetID() + in.GetToken()}, nil
+}
+
+func (api *GRPCApi) notifyClientsOfMessage(message interface{}) { // TODO: Change to pb.Message class
+	api.c <- message
 }

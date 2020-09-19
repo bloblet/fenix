@@ -22,6 +22,6 @@ func main() {
 	// a := api.NewAPI(*user, *password, "")
 	// a.Serve(false)
 
-	a := api.GRPCApi{}
+	a := api.NewGRPCApi()
 	a.Serve()
 }
