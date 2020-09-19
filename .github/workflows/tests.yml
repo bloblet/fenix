@@ -22,21 +22,23 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Get dependencies
+    - name: Gen proto files
       run: |
-        go get -v -t -d ./...
-#        if [ -f Gopkg.toml ]; then
-#            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-#            dep ensure
-#        fi
-
-    - name: Build proto
-      run: |
+        go get github.com/golang/protobuf/protoc-gen-go
+        go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
         protoc --go_out=Mgrpc/service_config/service_config.proto=/internal/proto/grpc_service_config:. \
           --go-grpc_out=Mgrpc/service_config/service_config.proto=/internal/proto/grpc_service_config:. \
           --go_opt=paths=source_relative \
           --go-grpc_opt=paths=source_relative \
         proto/6.0.1/user.proto
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+        if [ -f Gopkg.toml ]; then
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            dep ensure
+        fi
 
     - name: Build server
       run: go build -v -o fenix-server ./server
