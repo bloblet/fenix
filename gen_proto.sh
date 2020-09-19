@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 go get github.com/golang/protobuf/protoc-gen-go
 go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
