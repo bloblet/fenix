@@ -3,7 +3,7 @@
 [![Codeac](https://static.codeac.io/badges/2-281254941.svg "Codeac.io")](https://app.codeac.io/github/bloblet/fenix)
 ![Tests](https://github.com/bloblet/fenix/workflows/Tests/badge.svg)
 
-Fenix is a social media platform based off [Discord](https://discord.com), but offers more security. 
+Fenix is a social media platform inspired by [Discord](https://discord.com), but offers more security. 
 
 DMs will have an end to end encryption option.
 
