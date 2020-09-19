@@ -1,0 +1,8 @@
+syntax = "proto3";
+option go_package = "github.com/bloblet/fenix/proto/6.0.1/proto";
+
+message FetchClientAuth {}
+
+message ClientAuthAck {
+	string username = 1;
+}
