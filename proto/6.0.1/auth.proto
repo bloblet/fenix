@@ -6,3 +6,7 @@ message FetchClientAuth {}
 message ClientAuthAck {
 	string username = 1;
 }
+
+service Auth {
+	rpc ClientAuth(FetchClientAuth) returns (ClientAuthAck) {}
+}
