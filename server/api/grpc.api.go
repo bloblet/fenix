@@ -29,7 +29,6 @@ type GRPCApi struct {
 
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
-	pb.RegisterUsersService(api.s, &pb.UsersService{Get: api.get})
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
@@ -40,12 +39,6 @@ func (api *GRPCApi) Serve() {
 	if err := api.s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-}
-
-// DEPRECATED, pending removal
-func (api *GRPCApi) get(_ context.Context, in *pb.Authenticate) (*pb.User, error) {
-	log.Printf("Received: %v", in.GetID())
-	return &pb.User{ID: in.GetID() + in.GetToken()}, nil
 }
 
 // gRPC doesn't have any way of identifying clients, other than client metadata.
