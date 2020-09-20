@@ -32,7 +32,7 @@ func (api *GRPCApi) get(_ context.Context, in *pb.Authenticate) (*pb.User, error
 	return &pb.User{ID: in.GetID() + in.GetToken()}, nil
 }
 
-func (api *GRPCApi) connect(_ context.Context, in *pb.OpenHandshake) (*pb.FetchClientAuth, error) {
+func (api *GRPCApi) connect(_ context.Context, _ *pb.OpenHandshake) (*pb.FetchClientAuth, error) {
 	return &pb.FetchClientAuth{}, nil
 }
 
