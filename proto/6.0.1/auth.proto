@@ -1,6 +1,8 @@
 syntax = "proto3";
 option go_package = "github.com/bloblet/fenix/proto/6.0.1/proto";
 
+import "google/protobuf/timestamp.proto";
+
 message OpenHandshake {}
 
 message FetchClientAuth {}
@@ -10,7 +12,9 @@ message ClientAuth {
 }
 
 message AuthAck {
-    string username = 1;
+   string username = 1;
+	string sessionToken = 2;
+	google.protobuf.Timestamp expiry = 3;
 }
 
 service Auth {
