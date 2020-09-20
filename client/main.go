@@ -25,14 +25,13 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err = c.Connect(ctx, &pb.OpenHandshake{})
-	if err != nil {
-		log.Fatalf("Server refused handshake: %v", err)
-	}
+	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "Test"})
 
-	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "Yay"})
 	if err != nil {
 		log.Fatalf("Failed to log in with username.")
 	}
+
 	log.Printf("Logged in as %s.", loginAck.GetUsername())
+	log.Printf("Session Token: %s", loginAck.GetSessionToken())
+	log.Printf("Expiry: %s", loginAck.GetExpiry().String())
 }
