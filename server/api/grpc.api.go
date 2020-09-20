@@ -29,6 +29,8 @@ type GRPCApi struct {
 
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
+	api.sessions = make(map[string]string)
+	
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
