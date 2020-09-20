@@ -3,10 +3,6 @@ option go_package = "github.com/bloblet/fenix/proto/6.0.1/proto";
 
 import "google/protobuf/timestamp.proto";
 
-message OpenHandshake {}
-
-message FetchClientAuth {}
-
 message ClientAuth {
 	string username = 1;
 }
@@ -18,6 +14,5 @@ message AuthAck {
 }
 
 service Auth {
-	rpc Connect(OpenHandshake) returns (FetchClientAuth) {}
 	rpc Login(ClientAuth) returns (AuthAck) {}
 }
