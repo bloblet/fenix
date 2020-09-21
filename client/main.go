@@ -10,22 +10,28 @@ import (
 )
 
 func main() {
+	timeout := 10 * time.Second
+
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("bloblet.com:4000", grpc.WithInsecure(), grpc.WithBlock())
+
+	conn, err := grpc.Dial("bloblet.com:4000", grpc.WithInsecure(), grpc.WithTimeout(timeout), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewUsersClient(conn)
+	c := pb.NewAuthClient(conn)
 
-	// Contact the server and print out its response.
+	// Contact the server and get our username accepted.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := c.Get(ctx, &pb.Authenticate{Token: "Ayy", ID: "Yay"})
-	
+
+	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "Test"})
+
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		log.Fatalf("Failed to log in with username.")
 	}
 
-	log.Printf("Greeting: %s", r.GetID())
+	log.Printf("Logged in as %s.", loginAck.GetUsername())
+	log.Printf("Session Token: %s", loginAck.GetSessionToken())
+	log.Printf("Expiry: %s", loginAck.GetExpiry().String())
 }
