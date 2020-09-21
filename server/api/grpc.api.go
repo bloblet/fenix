@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/bloblet/fenix/proto/6.0.1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -30,7 +31,7 @@ type GRPCApi struct {
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
 	api.sessions = make(map[string]string)
-	
+
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
@@ -43,9 +44,18 @@ func (api *GRPCApi) Serve() {
 	}
 }
 
+// utilCheckSessionToken is a helper function that can validate and identify a request.
+// If clients have more than one session-token, fenix only uses the first one.
+func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) string {
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	token := md.Get("session-token")[0]
+	return api.sessions[token]
+}
+ 
 // gRPC doesn't have any way of identifying clients, other than client metadata.
 // To avoid cluttering all the protobuf requests with token parameters, and to avoid messy bidirectional stream workarounds,
-// Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew 
+// Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
 // when it expires.  If anyone has a better solution, open an issue.
 func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
 	sessionToken, err := generateToken(16)
@@ -61,8 +71,8 @@ func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	}()
 
 	return &pb.AuthAck{
-		Username: psudeoUniqueUsername, 
-		SessionToken: sessionToken, 
-		Expiry: timestamppb.New(time.Now().Add(5 * time.Minute)),
-		}, nil
+		Username:     psudeoUniqueUsername,
+		SessionToken: sessionToken,
+		Expiry:       timestamppb.New(time.Now().Add(5 * time.Minute)),
+	}, nil
 }
