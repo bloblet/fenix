@@ -11,36 +11,37 @@ import (
 )
 
 type Client struct {
-	token string
+	token    string
 	username string
-
 }
 
-func (c *Client) keepalive(a pb.AuthClient, username string, updated chan bool)  {
+func (c *Client) keepalive(a pb.AuthClient, username string, updated chan bool) {
 	// Timeout of 10 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
-	defer cancel()
 
 	// Keepalive loop
 	for true {
 		// Send login request
+		// Timeout of 10 seconds
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		loginAck, err := a.Login(ctx, &pb.ClientAuth{Username: username})
+		cancel()
 
-		if err == nil {
-			// Update values
-			c.token = loginAck.GetSessionToken()
-			c.username = loginAck.GetUsername()
-			// Send updated signal on channel
-			updated <- true
-
-			// Wait until 30 seconds before token expires, for no "jank"
-			time.Sleep(loginAck.GetExpiry().AsTime().Sub(time.Now()) - (30 * time.Second))
+		if err != nil {
+			panic(err)
 		}
+		// Update values
+		c.token = loginAck.GetSessionToken()
+		c.username = loginAck.GetUsername()
+		// Send updated signal on channel
+		updated <- true
+
+		// Wait until 30 seconds before token expires, for no "jank"
+		time.Sleep(loginAck.GetExpiry().AsTime().Sub(time.Now()))
+
 	}
 }
 
-
-func main() {
+func (c *Client) Connect(username string) {
 	timeout := 10 * time.Second
 
 	// Set up a connection to the server.
@@ -50,20 +51,22 @@ func main() {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := pb.NewAuthClient(conn)
 
-	// Contact the server and get our username accepted.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	a := pb.NewAuthClient(conn)
 
-	loginAck, err := c.Login(ctx, &pb.ClientAuth{Username: "Test"})
+	// The channel is to make sure we don't try to do anything with a null SessionToken.
+	updated := make(chan bool)
+	go c.keepalive(a, username, updated)
 
-	
-	if err != nil {
-		log.Fatalf("Failed to log in with username.")
+	for true {
+		<-updated
+
+		log.Printf("Logged in as %s.", c.username)
+		log.Printf("Session Token: %s", c.token)
 	}
-	
-	log.Printf("Logged in as %s.", loginAck.GetUsername())
-	log.Printf("Session Token: %s", loginAck.GetSessionToken())
-	log.Printf("Expiry: %s", loginAck.GetExpiry().String())
+}
+
+func main() {
+	c := Client{}
+	c.Connect("Alice")
 }
