@@ -35,8 +35,3 @@ message CreateUser {
 	string password = 2;
 	string email = 3;
 }
-
-service Users {
-  rpc Get(Authenticate) returns (User) {}
-  rpc New(CreateUser) returns (User) {}
-}

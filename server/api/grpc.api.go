@@ -2,31 +2,83 @@ package api
 
 import (
 	"context"
-	pb "github.com/bloblet/fenix/proto/6.0.1"
+	"crypto/rand"
+	"encoding/base64"
 	"log"
+	mrand "math/rand"
 	"net"
+	"strconv"
+	"time"
 
+	pb "github.com/bloblet/fenix/proto/6.0.1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func generateToken(n int) (string, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+
+	return base64.URLEncoding.EncodeToString(b), err
+}
+
 type GRPCApi struct {
-	s *grpc.Server
+	s        *grpc.Server
+	c        chan interface{}
+	sessions map[string]string
 }
 
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
-	pb.RegisterUsersService(api.s, &pb.UsersService{Get: api.get})
+	api.sessions = make(map[string]string)
+	api.c = make(chan interface{})
+
+	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	
+
 	if err := api.s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 }
-func (api *GRPCApi) get(_ context.Context, in *pb.Authenticate) (*pb.User, error) {
-	log.Printf("Received: %v", in.GetID())
-	return &pb.User{ID: in.GetID() + in.GetToken()}, nil
+
+// utilCheckSessionToken is a helper function that can validate and identify a request.
+// If clients have more than one session-token, fenix only uses the first one.
+func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) string {
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	token := md.Get("session-token")[0]
+	return api.sessions[token]
+}
+
+// gRPC doesn't have any way of identifying clients, other than client metadata.
+// To avoid cluttering all the protobuf requests with token parameters, and to avoid messy bidirectional stream workarounds,
+// Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
+// when it expires.  If anyone has a better solution, open an issue.
+func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
+	sessionToken, err := generateToken(16)
+	if err != nil {
+		return nil, err
+	}
+	psudeoUniqueUsername := in.GetUsername() + strconv.Itoa(mrand.Intn(1000))
+	api.sessions[sessionToken] = psudeoUniqueUsername
+
+	defer func() {
+		time.NewTimer(5 * time.Minute)
+		delete(api.sessions, sessionToken)
+	}()
+
+	return &pb.AuthAck{
+		Username:     psudeoUniqueUsername,
+		SessionToken: sessionToken,
+		Expiry:       timestamppb.New(time.Now().Add(5 * time.Minute)),
+	}, nil
+}
+
+func (api *GRPCApi) notifyClientsOfMessage(message interface{}) { // TODO: Change to pb.Message class
+	api.c <- message
 }
