@@ -25,7 +25,7 @@ func generateToken(n int) (string, error) {
 
 type GRPCApi struct {
 	s        *grpc.Server
-	c chan interface{}
+	c        chan interface{}
 	sessions map[string]string
 }
 
@@ -33,7 +33,7 @@ func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
 	api.sessions = make(map[string]string)
 	api.c = make(chan interface{})
-	
+
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
@@ -54,7 +54,7 @@ func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) string {
 	token := md.Get("session-token")[0]
 	return api.sessions[token]
 }
- 
+
 // gRPC doesn't have any way of identifying clients, other than client metadata.
 // To avoid cluttering all the protobuf requests with token parameters, and to avoid messy bidirectional stream workarounds,
 // Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
