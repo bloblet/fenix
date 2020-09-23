@@ -28,6 +28,7 @@ type GRPCApi struct {
 	c chan interface{}
 	sessions map[string]string
 }
+
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
 	api.sessions = make(map[string]string)
