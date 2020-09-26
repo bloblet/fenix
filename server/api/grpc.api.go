@@ -90,7 +90,7 @@ func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) erro
 	// Pass any sent messages to the client
 	go func() {
 		for true {
-			msg := <- api.c
+			msg := <-api.c
 			stream.Send(msg)
 		}
 	}()
