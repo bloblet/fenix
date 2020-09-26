@@ -5,9 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"log"
-	mrand "math/rand"
 	"net"
-	"strconv"
 	"time"
 
 	pb "github.com/bloblet/fenix/proto/6.0.1"
@@ -51,7 +49,6 @@ func (api *GRPCApi) Serve() {
 // If clients have more than one session-token, fenix only uses the first one.
 func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) string {
 	md, _ := metadata.FromIncomingContext(ctx)
-
 	token := md.Get("session-token")[0]
 	return api.sessions[token]
 }
@@ -65,11 +62,11 @@ func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	if err != nil {
 		return nil, err
 	}
-	psudeoUniqueUsername := in.GetUsername() + strconv.Itoa(mrand.Intn(1000))
+	psudeoUniqueUsername := in.GetUsername() //+ strconv.Itoa(mrand.Intn(1000))
 	api.sessions[sessionToken] = psudeoUniqueUsername
-
-	defer func() {
-		time.NewTimer(5 * time.Minute)
+	go func() {
+		timer := time.NewTimer(5 * time.Minute)
+		<-timer.C
 		delete(api.sessions, sessionToken)
 	}()
 
@@ -81,10 +78,7 @@ func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 }
 
 func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) error {
-	log.Println("yay")
 	id := api.utilCheckSessionToken(stream.Context())
-
-	print(id)
 	if id == "" {
 		panic("Not logged in")
 	}
@@ -103,14 +97,14 @@ func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) erro
 		msg, err := stream.Recv()
 
 		if err != nil {
-			panic(err)
+			break
 		}
 
 		// Make the UUID
 		messageID, err := uuid.NewRandom()
 
 		if err != nil {
-			panic(err)
+			break
 		}
 
 		// Notify all clients of the message
