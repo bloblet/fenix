@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	pb "github.com/bloblet/fenix/proto/6.0.1"
@@ -62,6 +63,30 @@ func (c *Client) Connect(username string) chan bool {
 	// The channel is to make sure we don't try to do anything with a null SessionToken.
 	updated := make(chan bool)
 	go c.keepalive(a, username, updated)
+	<-updated
+
+	print(c.token)
+	
+	msgClient := pb.NewMessagesClient(c.conn)
+
+	messageStream, err := msgClient.HandleMessages(c.addMetadata(context.TODO()))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		for true {
+			msg, err := c.messageStream.Recv()
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("<%v> %v", msg.ID, msg.Content)
+		}
+	}()
+
+	c.messageStream = messageStream
+
 	return updated
 }
 
@@ -70,34 +95,15 @@ func (c *Client) addMetadata(ctx context.Context) context.Context {
 }
 
 func (c *Client) SendMessage(message string) {
-	if c.messageStream == nil {
-		msgClient := pb.NewMessagesClient(c.conn)
+	message = strings.ReplaceAll("message", "\n", "")
 
-		messageStream, err := msgClient.HandleMessages(c.addMetadata(context.Background()))
-		if err != nil {
-			log.Fatal(err)
-		}
-		go func() {
-			for true {
-				msg, err := c.messageStream.Recv()
-				if err != nil {
-					log.Fatal(err)
-				}
-				fmt.Printf("<%v> %v", msg.ID, msg.Content)
-			}
-		}()
-
-		c.messageStream = messageStream
-
-	}
 	c.messageStream.Send(&pb.CreateMessage{Content: message})
 }
 
 func main() {
 	c := Client{}
 	reader := bufio.NewReader(os.Stdin)
-	updated := c.Connect("Alice")
-	<-updated
+	c.Connect("Alice")
 	fmt.Println("Connected to Fenix")
 	for true {
 		text, _ := reader.ReadString('\n')
