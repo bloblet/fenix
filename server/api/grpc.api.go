@@ -11,6 +11,7 @@ import (
 	"time"
 
 	pb "github.com/bloblet/fenix/proto/6.0.1"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -25,17 +26,17 @@ func generateToken(n int) (string, error) {
 
 type GRPCApi struct {
 	s        *grpc.Server
-	c        chan interface{}
+	c        chan *pb.Message
 	sessions map[string]string
 }
 
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
 	api.sessions = make(map[string]string)
-	api.c = make(chan interface{})
+	api.c = make(chan *pb.Message)
 
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
-
+	pb.RegisterMessagesService(api.s, &pb.MessagesService{HandleMessages: api.handleMessages})
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -79,6 +80,48 @@ func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	}, nil
 }
 
-func (api *GRPCApi) notifyClientsOfMessage(message interface{}) { // TODO: Change to pb.Message class
+func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) error {
+	id := api.utilCheckSessionToken(stream.Context())
+
+	if id == "" {
+		panic("Not logged in")
+	}
+
+	// Pass any sent messages to the client
+	go func() {
+		for true {
+			msg := <- api.c
+			stream.Send(msg)
+		}
+	}()
+
+	// Send messages the client requests
+	for true {
+		// Wait for the next message request
+		msg, err := stream.Recv()
+
+		if err != nil {
+			panic(err)
+		}
+
+		// Make the UUID
+		messageID, err := uuid.NewRandom()
+
+		if err != nil {
+			panic(err)
+		}
+
+		// Notify all clients of the message
+		api.notifyClientsOfMessage(&pb.Message{
+			ID:      messageID.String(),
+			UserID:  id,
+			SentAt:  timestamppb.Now(),
+			Content: msg.GetContent(),
+		})
+	}
+	return nil
+}
+
+func (api *GRPCApi) notifyClientsOfMessage(message *pb.Message) {
 	api.c <- message
 }
