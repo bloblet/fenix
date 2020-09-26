@@ -8,7 +8,7 @@ message ClientAuth {
 }
 
 message AuthAck {
-   string username = 1;
+	string username = 1;
 	string sessionToken = 2;
 	google.protobuf.Timestamp expiry = 3;
 }
