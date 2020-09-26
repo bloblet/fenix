@@ -61,6 +61,7 @@ func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) string {
 // Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
 // when it expires.  If anyone has a better solution, open an issue.
 func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
+	log.Println("yay")
 	sessionToken, err := generateToken(16)
 	if err != nil {
 		return nil, err
