@@ -23,7 +23,7 @@ func generateToken(n int) (string, error) {
 }
 
 type user struct {
-	ID string
+	ID       string
 	Username string
 	messages chan *pb.Message
 }
@@ -36,7 +36,7 @@ type GRPCApi struct {
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
 	api.sessions = make(map[string]user)
-	
+
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 	pb.RegisterMessagesService(api.s, &pb.MessagesService{HandleMessages: api.handleMessages})
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
