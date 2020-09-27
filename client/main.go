@@ -87,24 +87,6 @@ func (c *Client) Connect(username string) chan bool {
 
 	c.messageStream = messageStream
 
-	usrClient := pb.NewUsersClient(c.conn)
-
-	connectionStream, err := usrClient.Connect(metadata.NewOutgoingContext(context.Background(), md), &pb.Nil{})
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	go func() {
-		for true {
-			co, err := connectionStream.Recv()
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("%v is connecting...", co.GetUsername())
-		}
-	}()
-	
 	return updated
 }
 
