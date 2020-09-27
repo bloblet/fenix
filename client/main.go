@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pb "github.com/bloblet/fenix/proto/6.0.1"
+	"github.com/pborman/ansi"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -80,13 +81,30 @@ func (c *Client) Connect(username string) chan bool {
 			if err != nil {
 				log.Fatal(err)
 			}
-
 			fmt.Printf("<%v> %v\n", msg.UserID, msg.Content)
 		}
 	}()
 
 	c.messageStream = messageStream
 
+	usrClient := pb.NewUsersClient(c.conn)
+
+	connectionStream, err := usrClient.Connect(metadata.NewOutgoingContext(context.Background(), md), &pb.Nil{})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		for true {
+			co, err := connectionStream.Recv()
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%v is connecting...", co.GetUsername())
+		}
+	}()
+	
 	return updated
 }
 
@@ -109,6 +127,7 @@ func main() {
 	fmt.Println("Connected to Fenix")
 	for true {
 		text, _ := reader.ReadString('\n')
+		fmt.Printf("%v%v", ansi.CPL, ansi.DL)
 		c.SendMessage(text)
 	}
 }

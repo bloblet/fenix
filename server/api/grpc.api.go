@@ -22,17 +22,21 @@ func generateToken(n int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
+type user struct {
+	ID string
+	Username string
+	messages chan *pb.Message
+}
+
 type GRPCApi struct {
 	s        *grpc.Server
-	c        chan *pb.Message
-	sessions map[string]string
+	sessions map[string]user
 }
 
 func (api *GRPCApi) Serve() {
 	api.s = grpc.NewServer()
-	api.sessions = make(map[string]string)
-	api.c = make(chan *pb.Message)
-
+	api.sessions = make(map[string]user)
+	
 	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
 	pb.RegisterMessagesService(api.s, &pb.MessagesService{HandleMessages: api.handleMessages})
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
@@ -47,7 +51,7 @@ func (api *GRPCApi) Serve() {
 
 // utilCheckSessionToken is a helper function that can validate and identify a request.
 // If clients have more than one session-token, fenix only uses the first one.
-func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) string {
+func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) user {
 	md, _ := metadata.FromIncomingContext(ctx)
 	token := md.Get("session-token")[0]
 	return api.sessions[token]
@@ -62,8 +66,12 @@ func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	if err != nil {
 		return nil, err
 	}
-	psudeoUniqueUsername := in.GetUsername() //+ strconv.Itoa(mrand.Intn(1000))
-	api.sessions[sessionToken] = psudeoUniqueUsername
+	user := user{}
+	user.messages = make(chan *pb.Message)
+	user.Username = in.GetUsername()
+
+	api.sessions[sessionToken] = user
+
 	go func() {
 		timer := time.NewTimer(5 * time.Minute)
 		<-timer.C
@@ -71,23 +79,22 @@ func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	}()
 
 	return &pb.AuthAck{
-		Username:     psudeoUniqueUsername,
+		Username:     user.Username,
 		SessionToken: sessionToken,
 		Expiry:       timestamppb.New(time.Now().Add(5 * time.Minute)),
 	}, nil
 }
 
 func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) error {
-	id := api.utilCheckSessionToken(stream.Context())
-	if id == "" {
-		panic("Not logged in")
+	user := api.utilCheckSessionToken(stream.Context())
+	if user.Username == "" {
+		return grpc.ErrClientConnClosing
 	}
 
 	// Pass any sent messages to the client
 	go func() {
 		for true {
-			msg := <-api.c
-			stream.Send(msg)
+			stream.Send(<-user.messages)
 		}
 	}()
 
@@ -95,29 +102,30 @@ func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) erro
 	for true {
 		// Wait for the next message request
 		msg, err := stream.Recv()
-
 		if err != nil {
-			break
+			return grpc.ErrClientConnClosing
 		}
 
 		// Make the UUID
 		messageID, err := uuid.NewRandom()
 
 		if err != nil {
-			break
+			return grpc.ErrClientConnClosing
 		}
 
 		// Notify all clients of the message
 		api.notifyClientsOfMessage(&pb.Message{
 			ID:      messageID.String(),
-			UserID:  id,
+			UserID:  user.Username, // TODO change to user.ID
 			SentAt:  timestamppb.Now(),
 			Content: msg.GetContent(),
 		})
 	}
-	return nil
+	return grpc.ErrClientConnClosing
 }
 
 func (api *GRPCApi) notifyClientsOfMessage(message *pb.Message) {
-	api.c <- message
+	for _, val := range api.sessions {
+		val.messages <- message
+	}
 }
