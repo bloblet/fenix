@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	pb "github.com/bloblet/fenix/proto/6.0.1"
+	pb "github.com/bloblet/fenix/proto"
 	"github.com/pborman/ansi"
 
 	"google.golang.org/grpc"
