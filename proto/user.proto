@@ -1,6 +1,8 @@
 syntax = "proto3";
 option go_package = "github.com/bloblet/fenix/proto/6.0.1/proto";
 
+message Nil {}
+
 message User {
 	// Identification
 	string ID = 1;
