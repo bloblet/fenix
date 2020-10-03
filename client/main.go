@@ -6,10 +6,11 @@ import (
 	"github.com/pborman/ansi"
 	"os"
 	"strings"
+	"github.com/bloblet/fenix/client/client"
 )
 
 func main() {
-	c := Client{}
+	c := client.Client{}
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Pick a username: ")
 	username, _ := reader.ReadString('\n')

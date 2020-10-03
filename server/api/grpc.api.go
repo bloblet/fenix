@@ -45,11 +45,9 @@ func (api *GRPCApi) Serve() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	go func() {
-		if err := api.S.Serve(lis); err != nil {
-			log.Fatalf("failed to serve: %v", err)
-		}
-	}()
+	if err := api.S.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
 
 // utilCheckSessionToken is a helper function that can validate and identify a request.
@@ -88,7 +86,7 @@ func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	}, nil
 }
 
-func (api *GRPCApi) handleMessages(stream pb.Messages_HandleMessagesServer) error {
+func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
 	user := api.utilCheckSessionToken(stream.Context())
 	if user.Username == "" {
 		return grpc.ErrClientConnClosing
