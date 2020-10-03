@@ -7,30 +7,47 @@ on:
     branches: [ master ]
 
 jobs:
+  generate:
+    name: Generate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.15.2
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15.2
+        id: go
+        
+      - name: Set up Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: '3.x'
 
-  test:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Gen proto files
+        run: |
+          ./gen_proto.sh
+        
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.0
+        with:
+          name: protobufs
+          path: proto/*.go
+
+  build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-
-    - name: Set up Go 1.15.2
-      uses: actions/setup-go@v2
+    - run: cd proto/
+      
+    - name: Download artifact
+      uses: actions/download-artifact@v2
       with:
-        go-version: ^1.15.2
-      id: go
-
-    - name: Set up Protoc
-      uses: arduino/setup-protoc@v1
-      with:
-        version: '3.x'
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-
-    - name: Gen proto files
-      run: |
-        ./gen_proto.sh
-
+        name: protobufs
+    
+    - run: cd ../
+      
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
@@ -50,23 +67,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-  - name: Set up Go 1.15.2
+    - run: cd proto/
+      
+    - name: Download artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: protobufs
+    
+    - run: cd ../
+      
+    - name: Set up Go 1.15.2
       uses: actions/setup-go@v2
       with:
         go-version: ^1.15.2
       id: go
-
-    - name: Set up Protoc
-      uses: arduino/setup-protoc@v1
-      with:
-        version: '3.x'
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-
-    - name: Gen proto files
-      run: |
-        ./gen_proto.sh
 
     - name: Get dependencies
       run: |
