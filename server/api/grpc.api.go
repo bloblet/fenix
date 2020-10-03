@@ -29,24 +29,26 @@ type user struct {
 }
 
 type GRPCApi struct {
-	s        *grpc.Server
+	S        *grpc.Server
 	sessions map[string]user
 }
 
 func (api *GRPCApi) Serve() {
-	api.s = grpc.NewServer()
+	api.S = grpc.NewServer()
 	api.sessions = make(map[string]user)
 
-	pb.RegisterAuthService(api.s, &pb.AuthService{Login: api.login})
-	pb.RegisterMessagesService(api.s, &pb.MessagesService{HandleMessages: api.handleMessages})
+	pb.RegisterAuthService(api.S, &pb.AuthService{Login: api.login})
+	pb.RegisterMessagesService(api.S, &pb.MessagesService{HandleMessages: api.handleMessages})
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-
-	if err := api.s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	
+	go func() {
+		if err := api.S.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+		}
+	}()
 }
 
 // utilCheckSessionToken is a helper function that can validate and identify a request.
