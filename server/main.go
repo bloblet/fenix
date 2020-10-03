@@ -7,4 +7,5 @@ import (
 func main() {
 	a := api.GRPCApi{}
 	a.Serve()
+	<-make(chan bool)
 }

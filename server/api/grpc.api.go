@@ -31,14 +31,15 @@ type user struct {
 type GRPCApi struct {
 	S        *grpc.Server
 	sessions map[string]user
+	pb.UnimplementedAuthServer
+	pb.UnimplementedMessagesServer
 }
 
 func (api *GRPCApi) Serve() {
 	api.S = grpc.NewServer()
 	api.sessions = make(map[string]user)
-
-	pb.RegisterAuthService(api.S, &pb.AuthService{Login: api.login})
-	pb.RegisterMessagesService(api.S, &pb.MessagesService{HandleMessages: api.handleMessages})
+	pb.RegisterAuthServer(api.S, api)
+	pb.RegisterMessagesServer(api.S, api)
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -63,7 +64,7 @@ func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) user {
 // To avoid cluttering all the protobuf requests with token parameters, and to avoid messy bidirectional stream workarounds,
 // Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
 // when it expires.  If anyone has a better solution, open an issue.
-func (api *GRPCApi) login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
+func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
 	sessionToken, err := generateToken(16)
 	if err != nil {
 		return nil, err
