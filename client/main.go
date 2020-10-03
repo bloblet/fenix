@@ -2,13 +2,11 @@ package main
 
 import (
 	"bufio"
-	"os"
-	"strings"
 	"fmt"
 	"github.com/pborman/ansi"
+	"os"
+	"strings"
 )
-
-
 
 func main() {
 	c := Client{}
@@ -18,13 +16,13 @@ func main() {
 
 	c.Connect(strings.ReplaceAll(username, "\n", ""))
 
-	go func(){
+	go func() {
 		for true {
 			msg := <-c.Messages
 			fmt.Printf("<%v> %v\n", msg.GetUserID(), msg.GetContent())
 		}
 	}()
-	
+
 	fmt.Println("Connected to Fenix")
 	for true {
 		text, _ := reader.ReadString('\n')

@@ -43,7 +43,7 @@ func (api *GRPCApi) Serve() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	
+
 	go func() {
 		if err := api.S.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)

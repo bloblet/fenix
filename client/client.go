@@ -54,7 +54,7 @@ func (c *Client) auth(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-func (c *Client) dial()  {
+func (c *Client) dial() {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial("bloblet.com:4000", grpc.WithInsecure(), grpc.WithTimeout(timeout), grpc.WithBlock())
 	c.conn = conn
@@ -70,12 +70,12 @@ func (c *Client) initAuthClient(username string) {
 	c.SessionTokens = make(chan *pb.AuthAck)
 
 	go c.keepalive(a, username, c.SessionTokens)
-	<-	c.SessionTokens
+	<-c.SessionTokens
 }
 
 func (c *Client) initMessageClient() {
 	msgClient := pb.NewMessagesClient(c.conn)
-	
+
 	messageStream, err := msgClient.HandleMessages(c.auth(context.Background()))
 
 	if err != nil {
@@ -98,7 +98,7 @@ func (c *Client) initMessageClient() {
 func (c *Client) Connect(username string) {
 	c.dial()
 
-	c.initAuthClient(username)	
+	c.initAuthClient(username)
 
 	c.initMessageClient()
 }
