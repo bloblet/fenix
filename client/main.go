@@ -15,7 +15,7 @@ func main() {
 	fmt.Print("Pick a username: ")
 	username, _ := reader.ReadString('\n')
 
-	c.Connect(strings.ReplaceAll(username, "\n", ""))
+	c.Connect(strings.ReplaceAll(username, "\n", ""), "bloblet.com:4000")
 
 	go func() {
 		for true {

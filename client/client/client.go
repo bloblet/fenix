@@ -16,7 +16,7 @@ var timeout = 10 * time.Second
 
 type Client struct {
 	token         string
-	username      string
+	Username      string
 	conn          *grpc.ClientConn
 	messageStream pb.Messages_HandleMessagesClient
 	Debug         bool
@@ -40,7 +40,7 @@ func (c *Client) keepalive(a pb.AuthClient, username string, sessionTokens chan 
 		}
 		// Update values
 		c.token = loginAck.GetSessionToken()
-		c.username = loginAck.GetUsername()
+		c.Username = loginAck.GetUsername()
 		// Send updated signal on channel
 		sessionTokens <- loginAck
 
@@ -54,9 +54,9 @@ func (c *Client) auth(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-func (c *Client) dial() {
+func (c *Client) dial(addr string) {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("bloblet.com:4000", grpc.WithInsecure(), grpc.WithTimeout(timeout), grpc.WithBlock())
+	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(timeout), grpc.WithBlock())
 	c.conn = conn
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -95,8 +95,8 @@ func (c *Client) initMessageClient() {
 	}()
 }
 
-func (c *Client) Connect(username string) {
-	c.dial()
+func (c *Client) Connect(username string, addr string) {
+	c.dial(addr)
 
 	c.initAuthClient(username)
 
