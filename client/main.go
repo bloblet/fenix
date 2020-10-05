@@ -3,10 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/bloblet/fenix/client/client"
 	"github.com/pborman/ansi"
 	"os"
 	"strings"
-	"github.com/bloblet/fenix/client/client"
 )
 
 func main() {
