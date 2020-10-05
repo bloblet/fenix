@@ -11,7 +11,6 @@ import (
 	"github.com/bloblet/fenix/server/api"
 )
 
-
 func setupTestCase(t *testing.T) func(t *testing.T) {
 	// Tells the server goroutine when to stop the server
 	stop := make(chan bool)
@@ -42,20 +41,20 @@ func TestSendMessage(t *testing.T) {
 
 	c := client.Client{}
 	c.Connect("test", "localhost:4545")
-	
+
 	content := "look at this perfect messsage!"
 	readMessage := make(chan bool)
 	done := make(chan bool)
 	go func() {
-		msg := <-c.Messages 
+		msg := <-c.Messages
 		readMessage <- true
-		
-		if msg.UserID != c.Username || msg.Content != content  {
+
+		if msg.UserID != c.Username || msg.Content != content {
 			t.Error("Unexpected message")
 		}
 		done <- true
 	}()
-	
+
 	c.SendMessage(content)
 	select {
 	case <-readMessage:
