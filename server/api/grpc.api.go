@@ -35,7 +35,7 @@ type GRPCApi struct {
 	pb.UnimplementedMessagesServer
 }
 
-func (api *GRPCApi) Prepare()  {
+func (api *GRPCApi) Prepare() {
 	api.S = grpc.NewServer()
 	api.sessions = make(map[string]user)
 	pb.RegisterAuthServer(api.S, api)
