@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	pb "github.com/bloblet/fenix/proto"
+	pb "github.com/bloblet/fenix-protobufs/go"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -35,19 +35,28 @@ type GRPCApi struct {
 	pb.UnimplementedMessagesServer
 }
 
-func (api *GRPCApi) Serve() {
+func (api *GRPCApi) Prepare() {
 	api.S = grpc.NewServer()
 	api.sessions = make(map[string]user)
 	pb.RegisterAuthServer(api.S, api)
 	pb.RegisterMessagesServer(api.S, api)
+}
+
+func (api *GRPCApi) Listen(lis net.Listener) {
+	if err := api.S.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func (api *GRPCApi) Serve() {
+	api.Prepare()
+
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	if err := api.S.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-	}
+	api.Listen(lis)
 }
 
 // utilCheckSessionToken is a helper function that can validate and identify a request.
