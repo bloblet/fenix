@@ -7,5 +7,6 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/pborman/ansi v1.0.0
 	google.golang.org/grpc v1.32.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.0 // indirect
 	google.golang.org/protobuf v1.25.0
 )
