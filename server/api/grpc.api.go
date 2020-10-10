@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	pb "github.com/bloblet/fenix/proto"
+	pb "github.com/bloblet/fenix-protobufs/go"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

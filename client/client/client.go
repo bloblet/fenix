@@ -6,7 +6,7 @@ import (
 
 	"time"
 
-	pb "github.com/bloblet/fenix/proto"
+	pb "github.com/bloblet/fenix-protobufs/go"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
