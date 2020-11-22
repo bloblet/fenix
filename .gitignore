@@ -1,6 +1,7 @@
 env
-.vscode
+.vscode/
 *.sum
 fenix-server
 fenix-client
 *.pb.go
+.idea/

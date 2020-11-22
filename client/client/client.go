@@ -22,6 +22,8 @@ type Client struct {
 	Debug         bool
 	SessionTokens chan *pb.AuthAck
 	Messages      chan *pb.Message
+	msgClient     pb.MessagesClient
+	LastMessageID string
 }
 
 func (c *Client) keepalive(a pb.AuthClient, username string, sessionTokens chan *pb.AuthAck) {
@@ -74,9 +76,9 @@ func (c *Client) initAuthClient(username string) {
 }
 
 func (c *Client) initMessageClient() {
-	msgClient := pb.NewMessagesClient(c.conn)
+	c.msgClient = pb.NewMessagesClient(c.conn)
 
-	messageStream, err := msgClient.HandleMessages(c.auth(context.Background()))
+	messageStream, err := c.msgClient.HandleMessages(c.auth(context.Background()))
 
 	if err != nil {
 		log.Fatal(err)
@@ -90,6 +92,7 @@ func (c *Client) initMessageClient() {
 			if err != nil {
 				log.Fatal(err)
 			}
+			 c.LastMessageID = msg.MessageID
 			c.Messages <- msg
 		}
 	}()
@@ -102,6 +105,16 @@ func (c *Client) Connect(username string, addr string) {
 
 	c.initMessageClient()
 }
+
+// TODO: Uncomment once DB design issue is fixed
+//func (c *Client) RequestMessageHistory(lastMessageTime time.Time) []*pb.Message {
+//	history, err := c.msgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: lastMessageTime})
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	return history.GetMessages()
+//}
 
 func (c *Client) SendMessage(message string) {
 	c.messageStream.Send(&pb.CreateMessage{Content: message})

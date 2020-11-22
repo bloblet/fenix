@@ -6,6 +6,7 @@ CREATE KEYSPACE IF NOT EXISTS Messages WITH REPLICATION = { 'class' : 'SimpleStr
 CREATE KEYSPACE IF NOT EXISTS Comments WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
 CREATE KEYSPACE IF NOT EXISTS Reactions WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
 
+DROP TABLE IF EXISTS Users.User;
 CREATE TABLE Users.User (
 	UserID TEXT PRIMARY KEY,
 	Username TEXT,
@@ -21,4 +22,11 @@ CREATE TABLE Users.User (
 	Password blob
 );
 
-CREATE TABLE Channels.Channel
+DROP TABLE IF EXISTS Messages.Messages;
+CREATE TABLE Messages.Messages (
+    MessageID TEXT,
+    UserID TEXT,
+    Content TEXT,
+    CreatedAt TIMESTAMP,
+    PRIMARY KEY (MessageID, CreatedAt)
+) WITH CLUSTERING ORDER BY (CreatedAt DESC);
