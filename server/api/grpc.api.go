@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
+	"github.com/gocql/gocql"
 	"log"
 	"net"
 	"time"
 
 	pb "github.com/bloblet/fenix-protobufs/go"
-	"github.com/google/uuid"
+	db "github.com/bloblet/fenix/server/databases"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -29,14 +31,24 @@ type user struct {
 }
 
 type GRPCApi struct {
-	S        *grpc.Server
-	sessions map[string]user
+	S             *grpc.Server
+	sessions      map[string]user
+	msgDB         *db.MessageDB
+	clusterConfig *gocql.ClusterConfig
 	pb.UnimplementedAuthServer
 	pb.UnimplementedMessagesServer
 }
 
 func (api *GRPCApi) Prepare() {
 	api.S = grpc.NewServer()
+	api.msgDB = db.NewMessageDB()
+	api.clusterConfig = gocql.NewCluster("localhost")
+	api.clusterConfig.Consistency = gocql.Consistency(1)
+	api.clusterConfig.Authenticator = gocql.PasswordAuthenticator{
+		Username: "cassandra",
+		Password: "cassandra",
+	}
+
 	api.sessions = make(map[string]user)
 	pb.RegisterAuthServer(api.S, api)
 	pb.RegisterMessagesServer(api.S, api)
@@ -57,6 +69,15 @@ func (api *GRPCApi) Serve() {
 	}
 
 	api.Listen(lis)
+}
+
+func (api GRPCApi) utilCreateMessageSession() *gocql.Session {
+	session, err := db.NewMessagesSession(api.clusterConfig)
+	if err != nil {
+		fmt.Printf("Error starting DB session, %v", err)
+		panic(err)
+	}
+	return session
 }
 
 // utilCheckSessionToken is a helper function that can validate and identify a request.
@@ -95,6 +116,17 @@ func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	}, nil
 }
 
+// TODO: Fix DB design issue
+//func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
+//	api.utilCheckSessionToken(ctx)
+//	session := api.utilCreateMessageSession()
+//	msg := api.msgDB.MaybeGetMessage(func() *gocql.Session {
+//		return session
+//	}, history.GetLastMessageID())
+//
+//	return api.msgDB.FetchMessagesAfter(session, msg.GetSentAt().AsTime()), nil
+//}
+
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
 	user := api.utilCheckSessionToken(stream.Context())
 	if user.Username == "" {
@@ -104,32 +136,27 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 	// Pass any sent messages to the client
 	go func() {
 		for true {
-			stream.Send(<-user.messages)
+			_ = stream.Send(<-user.messages)
 		}
 	}()
+
+	session, err := db.NewMessagesSession(api.clusterConfig)
+	if err != nil {
+		fmt.Printf("Error starting DB session, %v", err)
+		panic(err)
+	}
 
 	// Send messages the client requests
 	for true {
 		// Wait for the next message request
-		msg, err := stream.Recv()
+		sendRequest, err := stream.Recv()
 		if err != nil {
 			return grpc.ErrClientConnClosing
 		}
 
-		// Make the UUID
-		messageID, err := uuid.NewRandom()
-
-		if err != nil {
-			return grpc.ErrClientConnClosing
-		}
-
+		msg := api.msgDB.NewMessage(session, sendRequest, user.Username)
 		// Notify all clients of the message
-		api.notifyClientsOfMessage(&pb.Message{
-			ID:      messageID.String(),
-			UserID:  user.Username, // TODO change to user.ID
-			SentAt:  timestamppb.Now(),
-			Content: msg.GetContent(),
-		})
+		api.notifyClientsOfMessage(msg)
 	}
 	return grpc.ErrClientConnClosing
 }

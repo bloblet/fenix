@@ -25,8 +25,15 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	}
 
 	go func() {
-		go a.Listen(lis)
-		<-stop
+		finished := false
+		go func() {
+			a.Listen(lis)
+			if !finished {
+				t.Fail()
+			}
+		}()
+
+		finished = <-stop
 		a.S.Stop()
 	}()
 
@@ -42,7 +49,7 @@ func TestSendMessage(t *testing.T) {
 	c := client.Client{}
 	c.Connect("test", "localhost:4545")
 
-	content := "look at this perfect messsage!"
+	content := "look at this perfect message!"
 	readMessage := make(chan bool)
 	done := make(chan bool)
 	go func() {
@@ -62,4 +69,13 @@ func TestSendMessage(t *testing.T) {
 		t.Error("Timeout")
 	}
 	<-done
+}
+
+func TestRequestMessageHistory(t *testing.T) {
+	teardownTestCase := setupTestCase(t)
+	defer teardownTestCase(t)
+
+	c := client.Client{}
+	c.Connect("test", "localhost:4545")
+
 }
