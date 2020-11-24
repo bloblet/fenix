@@ -92,7 +92,7 @@ func (c *Client) initMessageClient() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			 c.LastMessageID = msg.MessageID
+			c.LastMessageID = msg.MessageID
 			c.Messages <- msg
 		}
 	}()

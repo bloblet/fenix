@@ -12,8 +12,8 @@ import (
 const (
 	MessageID = "MessageID"
 	Content   = "Content"
-	SentAt = "CreatedAt"
-	UserID = "UserID"
+	SentAt    = "CreatedAt"
+	UserID    = "UserID"
 )
 
 func NewMessagesSession(config *gocql.ClusterConfig) (*gocql.Session, error) {
