@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	pb "github.com/bloblet/fenix-protobufs/go"
+	pb "github.com/bloblet/fenix/protobufs/go"
 	db "github.com/bloblet/fenix/server/databases"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

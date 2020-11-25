@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+// TODO: Fix
+option go_package = "go";
+
+import "google/protobuf/timestamp.proto";
+
+message ClientAuth {
+	string username = 1;
+}
+
+message AuthAck {
+	string username = 1;
+	string sessionToken = 2;
+	google.protobuf.Timestamp expiry = 3;
+}
+
+service Auth {
+	rpc Login(ClientAuth) returns (AuthAck) {}
+}

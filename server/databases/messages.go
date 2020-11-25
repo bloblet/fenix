@@ -2,7 +2,7 @@ package databases
 
 import (
 	"fmt"
-	pb "github.com/bloblet/fenix-protobufs/go"
+	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/gocql/gocql"
 	"github.com/oklog/ulid/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"

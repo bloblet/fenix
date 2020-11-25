@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+// TODO: Fix
+option go_package = "go";
+message Nil {}
+
+message User {
+	// Identification
+	string ID = 1;
+	string username = 2;
+	string discriminator = 3;
+
+	// Social	
+	Activity activity = 4;
+	repeated string servers = 5;
+	repeated string friends = 6;
+
+	// Authentication
+	string token = 7;
+	string email = 8;
+	bytes Salt = 9;
+	bytes Password = 10;
+
+	// Misc
+	UserSettings settings = 11;
+}
+
+message UserSettings {}
+message Activity {}
+
+message Authenticate {
+	string token = 1;
+	string ID = 2;
+}
+
+message CreateUser {
+	string username = 1;
+	string password = 2;
+	string email = 3;
+}
