@@ -1,0 +1,11 @@
+{
+    "grpc_gen": {
+        "go": "1cfa212add9463a4b4e6fe449289b01b8206f3d3",
+        "web": "77f8e55ad0058ffb55d0e812a93067abad56d108"
+    },
+    "proto": "c316135938a1ce87b387171962b9d6b6f7a0e872",
+    "proto_gen": {
+        "go": "37ad158aaba7eea77d797d5c65ecdd49c3bd72b8",
+        "web": "99c652e2def116d05028b2b7a92fcff03d62c6d2"
+    }
+}

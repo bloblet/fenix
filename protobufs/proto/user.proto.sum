@@ -1,0 +1,8 @@
+{
+    "grpc_gen": {},
+    "proto": "5b2a5e2186af9781b695fc5b5c41b66c4afbf9bd",
+    "proto_gen": {
+        "go": "d5ed323a5a36fe376b3eb59625d70005e5e95ce1",
+        "web": "44f9c6e46fe61e2f9b29ad621cc9ed095c6e3c91"
+    }
+}
