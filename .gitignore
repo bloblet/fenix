@@ -3,6 +3,5 @@ env
 go.sum
 fenix-server
 fenix-client
-*.pb.go
 gen.bat
 .idea
