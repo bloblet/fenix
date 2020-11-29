@@ -3,6 +3,23 @@ name: Fenix Checks
 on: [push, pull_request]
 
 jobs:
+  check_proto:
+    name: Check protobuf file versions (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out last commit
+        uses: actions/checkout@v2
+      
+      - name: Set up python3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      
+      - name: Run version check
+        run: |
+          cd protobufs/
+          python sum.py
+      
   build_server:
     name: Build Fenix server (Ubuntu)
     runs-on: ubuntu-latest
