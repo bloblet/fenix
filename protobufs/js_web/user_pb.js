@@ -556,10 +556,10 @@ proto.User.prototype.setEmail = function(value) {
 
 /**
  * optional bytes Salt = 9;
- * @return {string}
+ * @return {!(string|Uint8Array)}
  */
 proto.User.prototype.getSalt = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
 };
 
 
@@ -595,10 +595,10 @@ proto.User.prototype.setSalt = function(value) {
 
 /**
  * optional bytes Password = 10;
- * @return {string}
+ * @return {!(string|Uint8Array)}
  */
 proto.User.prototype.getPassword = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 10, ""));
 };
 
 
