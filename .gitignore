@@ -4,3 +4,4 @@ env
 fenix-server
 fenix-client
 *.pb.go
+.idea

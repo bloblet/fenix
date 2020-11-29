@@ -1,0 +1,1 @@
+bash --login ./gen.bash
