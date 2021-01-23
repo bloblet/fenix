@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/gocql/gocql"
+	"github.com/hailocab/gocassa"
 	"log"
 	"net"
 	"time"
@@ -34,7 +34,9 @@ type GRPCApi struct {
 	S             *grpc.Server
 	sessions      map[string]user
 	msgDB         *db.MessageDB
-	clusterConfig *gocql.ClusterConfig
+	cassandraHosts []string
+	cassandraPassword string
+	cassandraUsername string
 	pb.UnimplementedAuthServer
 	pb.UnimplementedMessagesServer
 }
@@ -42,12 +44,9 @@ type GRPCApi struct {
 func (api *GRPCApi) Prepare() {
 	api.S = grpc.NewServer()
 	api.msgDB = db.NewMessageDB()
-	api.clusterConfig = gocql.NewCluster("localhost")
-	api.clusterConfig.Consistency = gocql.Consistency(1)
-	api.clusterConfig.Authenticator = gocql.PasswordAuthenticator{
-		Username: "cassandra",
-		Password: "cassandra",
-	}
+	api.cassandraHosts = []string{"localhost"}
+	api.cassandraPassword = "cassandra"
+	api.cassandraUsername = "cassandra"
 
 	api.sessions = make(map[string]user)
 	pb.RegisterAuthServer(api.S, api)
@@ -71,8 +70,8 @@ func (api *GRPCApi) Serve() {
 	api.Listen(lis)
 }
 
-func (api GRPCApi) utilCreateMessageSession() *gocql.Session {
-	session, err := db.NewMessagesSession(api.clusterConfig)
+func (api GRPCApi) utilCreateMessageSession() gocassa.KeySpace {
+	session, err := db.NewMessagesSession(api.cassandraHosts, api.cassandraUsername, api.cassandraPassword)
 	if err != nil {
 		fmt.Printf("Error starting DB session, %v", err)
 		panic(err)
@@ -116,16 +115,12 @@ func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 	}, nil
 }
 
-// TODO: Fix DB design issue
-//func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
-//	api.utilCheckSessionToken(ctx)
-//	session := api.utilCreateMessageSession()
-//	msg := api.msgDB.MaybeGetMessage(func() *gocql.Session {
-//		return session
-//	}, history.GetLastMessageID())
-//
-//	return api.msgDB.FetchMessagesAfter(session, msg.GetSentAt().AsTime()), nil
-//}
+func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
+	api.utilCheckSessionToken(ctx)
+	session := api.utilCreateMessageSession()
+
+	return api.msgDB.FetchMessagesBefore(&session, history.GetLastMessageTime().AsTime()), nil
+}
 
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
 	user := api.utilCheckSessionToken(stream.Context())
@@ -140,11 +135,7 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 		}
 	}()
 
-	session, err := db.NewMessagesSession(api.clusterConfig)
-	if err != nil {
-		fmt.Printf("Error starting DB session, %v", err)
-		panic(err)
-	}
+	k := api.utilCreateMessageSession()
 
 	// Send messages the client requests
 	for true {
@@ -154,7 +145,7 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 			return grpc.ErrClientConnClosing
 		}
 
-		msg := api.msgDB.NewMessage(session, sendRequest, user.Username)
+		msg := api.msgDB.NewMessage(&k, sendRequest, user.Username)
 		// Notify all clients of the message
 		api.notifyClientsOfMessage(msg)
 	}

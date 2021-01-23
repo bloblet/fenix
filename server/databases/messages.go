@@ -1,25 +1,15 @@
 package databases
 
 import (
-	"fmt"
 	pb "github.com/bloblet/fenix/protobufs/go"
-	"github.com/gocql/gocql"
+	"github.com/bloblet/fenix/server/models/database"
+	"github.com/hailocab/gocassa"
 	"github.com/oklog/ulid/v2"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
-const (
-	MessageID = "MessageID"
-	Content   = "Content"
-	SentAt = "CreatedAt"
-	UserID = "UserID"
-)
-
-func NewMessagesSession(config *gocql.ClusterConfig) (*gocql.Session, error) {
-	config.Keyspace = "messages"
-
-	return config.CreateSession()
+func NewMessagesSession(hosts []string, username string, password string) (gocassa.KeySpace, error) {
+	return gocassa.ConnectToKeySpace("messages", hosts, username, password)
 }
 
 func NewMessageDB() *MessageDB {
@@ -55,70 +45,81 @@ func (db *MessageDB) PurgeCache() {
 	}
 }
 
-func (db *MessageDB) NewMessage(s *gocql.Session, message *pb.CreateMessage, userID string) *pb.Message {
+func (db MessageDB) getMessageTable(k gocassa.KeySpace) gocassa.Table {
+	mTable := k.Table("Messages", database.Message{}, gocassa.Keys{PartitionKeys: []string{"Id"}})
+
+	mTable.CreateIfNotExist()
+
+	return mTable
+}
+
+func (db *MessageDB) NewMessage(k *gocassa.KeySpace, cMsg *pb.CreateMessage, userID string) *pb.Message {
 	id := MakeULID()
 
-	q := s.Query("INSERT INTO Messages (MessageID, UserID, Content, CreatedAt) VALUES (?, ?, ?, ?)", id.String(), userID, message.GetContent(), time.Now())
-	err := q.Exec()
+	mTable := db.getMessageTable(*k)
+
+	msg := database.Message{
+		ID:        id.String(),
+		UserID:    userID,
+		Content:   cMsg.Content,
+		CreatedAt: ulid.Time(id.Time()),
+	}
+
+	err := mTable.Set(msg).Run()
 
 	if err != nil {
 		panic(err)
 	}
-	m := pb.Message{}
-	m.Content = message.GetContent()
-	m.MessageID = id.String()
-	m.SentAt = timestamppb.New(ulid.Time(id.Time()))
-	m.UserID = userID
+
+	m := msg.MarshalToPB()
+
 	db.MessageCacheExpiry[m.MessageID] = time.Now().Add(5 * time.Second)
-	return &m
+	return m
 }
 
 func (db *MessageDB) GetMessage(id string) *pb.Message {
 	return db.MessageCache[id]
 }
 
-func (db MessageDB) FetchMessage(s *gocql.Session, id string) *pb.Message {
-	rawMessage := make(map[string]interface{})
-
-	err := s.Query("SELECT * FROM Messages WHERE MessageID = ?", id).Scan(&rawMessage)
+func (db MessageDB) FetchMessage(k *gocassa.KeySpace, id string) *pb.Message {
+	mTable := db.getMessageTable(*k)
+	msg := database.Message{}
+	err := mTable.Where(gocassa.Eq("id", id)).ReadOne(&msg).Run()
 
 	if err != nil {
-		fmt.Printf("Error fetching message, %v", err)
-		return nil
+		panic(err)
 	}
 
-	message := pb.Message{}
-	message.MessageID = rawMessage[MessageID].(string)
-	message.Content = rawMessage[Content].(string)
-
-	return &message
+	return msg.MarshalToPB()
 }
 
-func (db MessageDB) MaybeGetMessage(s func() *gocql.Session, id string) *pb.Message {
+func (db MessageDB) MaybeGetMessage(k func() *gocassa.KeySpace, id string) *pb.Message {
 	if msg := db.GetMessage(id); msg != nil {
 		return msg
 	}
-	return db.FetchMessage(s(), id)
+	return db.FetchMessage(k(), id)
 }
 
-// TODO: Fix DB design issue
-func (db MessageDB) FetchMessagesBefore(s *gocql.Session, t time.Time) *pb.MessageHistory {
-	messages, err := s.Query("SELECT * FROM Messages WHERE CreatedAt <= ? ORDER BY MessageID LIMIT 50", t).Iter().SliceMap()
+func (db MessageDB) FetchMessagesBefore(k *gocassa.KeySpace, t time.Time) *pb.MessageHistory {
+	mTable := db.getMessageTable(*k)
+
+	messages := make([]database.Message, 0)
+
+	err := mTable.Where(gocassa.LTE("createdat", t)).Read(&messages).WithOptions(gocassa.Options{
+		ClusteringOrder: []gocassa.ClusteringOrderColumn{
+			{gocassa.DESC, "createdat"},
+		},
+	}).Run()
+
 	if err != nil {
-		fmt.Printf("Error getting message history, %v", err)
-		return nil
+		panic(err)
 	}
 
 	msgHistory := make([]*pb.Message, 0)
 
-	for i := 0; i < len(messages); i++ {
-		msg := messages[i]
-		msgHistory = append(msgHistory, &pb.Message{
-			MessageID: msg[MessageID].(string),
-			UserID:    msg[UserID].(string),
-			SentAt:    timestamppb.New(msg[SentAt].(time.Time)),
-			Content:   msg[Content].(string),
-		})
+	for _, msg := range messages {
+		msgHistory = append(msgHistory, msg.MarshalToPB())
 	}
+
 	return &pb.MessageHistory{Messages: msgHistory}
 }
