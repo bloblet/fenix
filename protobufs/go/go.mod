@@ -1,4 +1,4 @@
-module github.com/bloblet/fenix-protobufs/go
+module github.com/bloblet/fenix/protobufs/go
 
 go 1.15
 
