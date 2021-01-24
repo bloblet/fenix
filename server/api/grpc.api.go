@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
-	"github.com/hailocab/gocassa"
 	"log"
 	"net"
 	"time"
@@ -34,9 +32,6 @@ type GRPCApi struct {
 	S             *grpc.Server
 	sessions      map[string]user
 	msgDB         *db.MessageDB
-	cassandraHosts []string
-	cassandraPassword string
-	cassandraUsername string
 	pb.UnimplementedAuthServer
 	pb.UnimplementedMessagesServer
 }
@@ -44,10 +39,6 @@ type GRPCApi struct {
 func (api *GRPCApi) Prepare() {
 	api.S = grpc.NewServer()
 	api.msgDB = db.NewMessageDB()
-	api.cassandraHosts = []string{"localhost"}
-	api.cassandraPassword = "cassandra"
-	api.cassandraUsername = "cassandra"
-
 	api.sessions = make(map[string]user)
 	pb.RegisterAuthServer(api.S, api)
 	pb.RegisterMessagesServer(api.S, api)
@@ -68,15 +59,6 @@ func (api *GRPCApi) Serve() {
 	}
 
 	api.Listen(lis)
-}
-
-func (api GRPCApi) utilCreateMessageSession() gocassa.KeySpace {
-	session, err := db.NewMessagesSession(api.cassandraHosts, api.cassandraUsername, api.cassandraPassword)
-	if err != nil {
-		fmt.Printf("Error starting DB session, %v", err)
-		panic(err)
-	}
-	return session
 }
 
 // utilCheckSessionToken is a helper function that can validate and identify a request.
@@ -117,9 +99,9 @@ func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 
 func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
 	api.utilCheckSessionToken(ctx)
-	session := api.utilCreateMessageSession()
+	//session := api.utilCreateMessageSession()
 
-	return api.msgDB.FetchMessagesBefore(&session, history.GetLastMessageTime().AsTime()), nil
+	return api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime()), nil
 }
 
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
@@ -135,7 +117,7 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 		}
 	}()
 
-	k := api.utilCreateMessageSession()
+	//k := api.utilCreateMessageSession()
 
 	// Send messages the client requests
 	for true {
@@ -145,7 +127,7 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 			return grpc.ErrClientConnClosing
 		}
 
-		msg := api.msgDB.NewMessage(&k, sendRequest, user.Username)
+		msg := api.msgDB.NewMessage(sendRequest, user.Username)
 		// Notify all clients of the message
 		api.notifyClientsOfMessage(msg)
 	}

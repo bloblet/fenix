@@ -4,19 +4,25 @@ import (
 	"fmt"
 	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/bloblet/fenix/server/models/database"
-	"github.com/hailocab/gocassa"
-	"github.com/oklog/ulid/v2"
+	"github.com/go-bongo/bongo"
+	"gopkg.in/mgo.v2/bson"
 	"time"
 )
 
-func NewMessagesSession(hosts []string, username string, password string) (gocassa.KeySpace, error) {
-	return gocassa.ConnectToKeySpace("messages", hosts, username, password)
-}
+
 
 func NewMessageDB() *MessageDB {
 	db := MessageDB{}
 	db.MessageCache = make(map[string]*pb.Message)
 	db.MessageCacheExpiry = make(map[string]time.Time)
+	conn, err := bongo.Connect(&bongo.Config{ConnectionString: "localhost", Database: "production"})
+
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		panic(err)
+	}
+	db.conn = conn
+
 	go db.PurgeCache()
 	return &db
 }
@@ -25,6 +31,7 @@ type MessageDB struct {
 	// TODO: Change to a channel cache when channels are implemented
 	MessageCache       map[string]*pb.Message
 	MessageCacheExpiry map[string]time.Time
+	conn *bongo.Connection
 }
 
 func (db *MessageDB) PurgeCache() {
@@ -46,28 +53,15 @@ func (db *MessageDB) PurgeCache() {
 	}
 }
 
-func (db MessageDB) getMessageTable(k gocassa.KeySpace) gocassa.Table {
-	mTable := k.Table("Messages", database.Message{}, gocassa.Keys{PartitionKeys: []string{"MessageID", "ChannelID"}, ClusteringColumns: []string{"CreatedAt"}})
+func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Message {
 
-	mTable.CreateIfNotExist()
-
-	return mTable
-}
-
-func (db *MessageDB) NewMessage(k *gocassa.KeySpace, cMsg *pb.CreateMessage, userID string) *pb.Message {
-	id := MakeULID()
-
-	mTable := db.getMessageTable(*k)
-
-	msg := database.Message{
-		MessageID: id.String(),
+	msg := &database.Message{
 		UserID:    userID,
 		Content:   cMsg.Content,
-		CreatedAt: ulid.Time(id.Time()),
+		CreatedAt: time.Now(),
 		ChannelID: "0",
 	}
-
-	err := mTable.Set(msg).Run()
+	err := db.conn.Collection("messages").Save(msg)
 
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -84,10 +78,9 @@ func (db *MessageDB) GetMessage(id string) *pb.Message {
 	return db.MessageCache[id]
 }
 
-func (db MessageDB) FetchMessage(k *gocassa.KeySpace, id string) *pb.Message {
-	mTable := db.getMessageTable(*k)
-	msg := database.Message{}
-	err := mTable.Where(gocassa.Eq("id", id)).ReadOne(&msg).Run()
+func (db MessageDB) FetchMessage(id string) *pb.Message {
+	msg := &database.Message{}
+	err := db.conn.Collection("messages").FindById(bson.ObjectId(id), msg)
 
 	if err != nil {
 		panic(err)
@@ -96,33 +89,23 @@ func (db MessageDB) FetchMessage(k *gocassa.KeySpace, id string) *pb.Message {
 	return msg.MarshalToPB()
 }
 
-func (db MessageDB) MaybeGetMessage(k func() *gocassa.KeySpace, id string) *pb.Message {
+func (db MessageDB) MaybeGetMessage(id string) *pb.Message {
 	if msg := db.GetMessage(id); msg != nil {
 		return msg
 	}
-	return db.FetchMessage(k(), id)
+	return db.FetchMessage(id)
 }
 
-func (db MessageDB) FetchMessagesBefore(k *gocassa.KeySpace, t time.Time) *pb.MessageHistory {
-	mTable := db.getMessageTable(*k)
+func (db MessageDB) FetchMessagesAfter(t time.Time) *pb.MessageHistory {
+	resultSet := db.conn.Collection("messages").Find(bson.D{{"channelid", "0"}, {"createdat", bson.D{{"$gt", t}}}})
 
-	messages := make([]database.Message, 0)
-
-	err := mTable.Where(gocassa.Eq("ChannelID", "0"), gocassa.LTE("createdat", t)).Read(&messages).WithOptions(gocassa.Options{
-		ClusteringOrder: []gocassa.ClusteringOrderColumn{
-			{gocassa.DESC, "createdat"},
-		},
-		AllowFiltering: true,
-	}).Run()
-
-	if err != nil {
-		panic(err)
-	}
+	results := resultSet.Query.Sort("createdAt").Limit(50).Iter()
 
 	msgHistory := make([]*pb.Message, 0)
 
-	for _, msg := range messages {
-		msgHistory = append(msgHistory, msg.MarshalToPB())
+	var result database.Message
+	for results.Next(&result) {
+		msgHistory = append(msgHistory, result.MarshalToPB())
 	}
 
 	return &pb.MessageHistory{Messages: msgHistory}

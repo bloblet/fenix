@@ -37,7 +37,7 @@ func main() {
 		if strings.HasPrefix(text, "/before") {
 			messages := c.RequestMessageHistory(time.Now())
 			for _, message := range messages {
-				fmt.Printf(">>> %v:%v <%v> %v\n", message.SentAt.AsTime().Hour(), message.SentAt.AsTime().Minute(), message.UserID, message.Content)
+				fmt.Printf(">>> %v <%v> %v\n", message.SentAt.AsTime().String(), message.UserID, message.Content)
 			}
 		} else {
 			c.SendMessage(sanitize(text))

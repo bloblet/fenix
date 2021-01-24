@@ -108,7 +108,7 @@ func (c *Client) Connect(username string, addr string) {
 }
 
 func (c *Client) RequestMessageHistory(lastMessageTime time.Time) []*pb.Message {
-	history, err := c.msgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: timestamppb.New(lastMessageTime)})
+	history, err := c.msgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: timestamppb.New(time.Now().Add(-time.Hour))})
 	if err != nil {
 		panic(err)
 	}

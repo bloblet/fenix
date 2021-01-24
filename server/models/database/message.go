@@ -2,25 +2,24 @@ package database
 
 import (
 	pb "github.com/bloblet/fenix/protobufs/go"
+	"github.com/go-bongo/bongo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
 type Message struct {
-	MessageID string
+	bongo.DocumentBase `bson:",inline"`
 	UserID    string
 	CreatedAt time.Time
 	ChannelID string
-	//ServerID  string
 	Content   string
 }
 
 func (m Message) MarshalToPB() *pb.Message {
 	message := pb.Message{}
-
 	message.Content = m.Content
 	message.UserID = m.UserID
-	message.MessageID = m.MessageID
+	message.MessageID = m.Id.String()
 	message.SentAt = timestamppb.New(m.CreatedAt)
 	return &message
 }
