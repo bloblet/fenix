@@ -61,7 +61,7 @@ func (api *GRPCApi) Listen(lis net.Listener) {
 
 func (api *GRPCApi) Serve() {
 	api.Prepare()
-
+	log.Print("Serving on 0.0.0.0:4000")
 	lis, err := net.Listen("tcp", "0.0.0.0:4000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

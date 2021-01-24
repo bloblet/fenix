@@ -7,6 +7,7 @@ import (
 	"github.com/pborman/ansi"
 	"os"
 	"strings"
+	"time"
 )
 
 func sanitize(dirty string) string {
@@ -19,7 +20,7 @@ func main() {
 	fmt.Print("Pick a username: ")
 	username, _ := reader.ReadString('\n')
 
-	c.Connect(sanitize(username), "bloblet.com:4000")
+	c.Connect(sanitize(username), "localhost:4000")
 
 	go func() {
 		for true {
@@ -32,6 +33,14 @@ func main() {
 	for true {
 		text, _ := reader.ReadString('\n')
 		fmt.Printf("%v%v", ansi.CPL, ansi.DL)
-		c.SendMessage(sanitize(text))
+
+		if strings.HasPrefix(text, "/before") {
+			messages := c.RequestMessageHistory(time.Now())
+			for _, message := range messages {
+				fmt.Printf(">>> %v:%v <%v> %v\n", message.SentAt.AsTime().Hour(), message.SentAt.AsTime().Minute(), message.UserID, message.Content)
+			}
+		} else {
+			c.SendMessage(sanitize(text))
+		}
 	}
 }

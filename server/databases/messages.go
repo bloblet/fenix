@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"fmt"
 	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/bloblet/fenix/server/models/database"
 	"github.com/hailocab/gocassa"
@@ -46,7 +47,7 @@ func (db *MessageDB) PurgeCache() {
 }
 
 func (db MessageDB) getMessageTable(k gocassa.KeySpace) gocassa.Table {
-	mTable := k.Table("Messages", database.Message{}, gocassa.Keys{PartitionKeys: []string{"Id"}})
+	mTable := k.Table("Messages", database.Message{}, gocassa.Keys{PartitionKeys: []string{"MessageID"}})
 
 	mTable.CreateIfNotExist()
 
@@ -59,7 +60,7 @@ func (db *MessageDB) NewMessage(k *gocassa.KeySpace, cMsg *pb.CreateMessage, use
 	mTable := db.getMessageTable(*k)
 
 	msg := database.Message{
-		ID:        id.String(),
+		MessageID: id.String(),
 		UserID:    userID,
 		Content:   cMsg.Content,
 		CreatedAt: ulid.Time(id.Time()),
@@ -68,7 +69,8 @@ func (db *MessageDB) NewMessage(k *gocassa.KeySpace, cMsg *pb.CreateMessage, use
 	err := mTable.Set(msg).Run()
 
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error: %v\n", err)
+		return nil
 	}
 
 	m := msg.MarshalToPB()
@@ -109,6 +111,7 @@ func (db MessageDB) FetchMessagesBefore(k *gocassa.KeySpace, t time.Time) *pb.Me
 		ClusteringOrder: []gocassa.ClusteringOrderColumn{
 			{gocassa.DESC, "createdat"},
 		},
+		AllowFiltering: true,
 	}).Run()
 
 	if err != nil {
