@@ -20,7 +20,7 @@ func main() {
 	fmt.Print("Pick a username: ")
 	username, _ := reader.ReadString('\n')
 
-	c.Connect(sanitize(username), "localhost:4000")
+	c.Connect(sanitize(username), "vps.bloblet.com:4000")
 
 	go func() {
 		for true {
