@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"log"
 
 	"time"
@@ -92,7 +93,7 @@ func (c *Client) initMessageClient() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			 c.LastMessageID = msg.MessageID
+			c.LastMessageID = msg.MessageID
 			c.Messages <- msg
 		}
 	}()
@@ -106,15 +107,14 @@ func (c *Client) Connect(username string, addr string) {
 	c.initMessageClient()
 }
 
-// TODO: Uncomment once DB design issue is fixed
-//func (c *Client) RequestMessageHistory(lastMessageTime time.Time) []*pb.Message {
-//	history, err := c.msgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: lastMessageTime})
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	return history.GetMessages()
-//}
+func (c *Client) RequestMessageHistory(lastMessageTime time.Time) []*pb.Message {
+	history, err := c.msgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: timestamppb.New(lastMessageTime)})
+	if err != nil {
+		panic(err)
+	}
+
+	return history.GetMessages()
+}
 
 func (c *Client) SendMessage(message string) {
 	c.messageStream.Send(&pb.CreateMessage{Content: message})
