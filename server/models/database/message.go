@@ -10,7 +10,7 @@ type Message struct {
 	MessageID string
 	UserID    string
 	CreatedAt time.Time
-	//ChannelID string
+	ChannelID string
 	//ServerID  string
 	Content   string
 }
@@ -22,6 +22,5 @@ func (m Message) MarshalToPB() *pb.Message {
 	message.UserID = m.UserID
 	message.MessageID = m.MessageID
 	message.SentAt = timestamppb.New(m.CreatedAt)
-
 	return &message
 }

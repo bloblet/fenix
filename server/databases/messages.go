@@ -47,7 +47,7 @@ func (db *MessageDB) PurgeCache() {
 }
 
 func (db MessageDB) getMessageTable(k gocassa.KeySpace) gocassa.Table {
-	mTable := k.Table("Messages", database.Message{}, gocassa.Keys{PartitionKeys: []string{"MessageID"}})
+	mTable := k.Table("Messages", database.Message{}, gocassa.Keys{PartitionKeys: []string{"MessageID", "ChannelID"}, ClusteringColumns: []string{"CreatedAt"}})
 
 	mTable.CreateIfNotExist()
 
@@ -64,6 +64,7 @@ func (db *MessageDB) NewMessage(k *gocassa.KeySpace, cMsg *pb.CreateMessage, use
 		UserID:    userID,
 		Content:   cMsg.Content,
 		CreatedAt: ulid.Time(id.Time()),
+		ChannelID: "0",
 	}
 
 	err := mTable.Set(msg).Run()
@@ -107,7 +108,7 @@ func (db MessageDB) FetchMessagesBefore(k *gocassa.KeySpace, t time.Time) *pb.Me
 
 	messages := make([]database.Message, 0)
 
-	err := mTable.Where(gocassa.LTE("createdat", t)).Read(&messages).WithOptions(gocassa.Options{
+	err := mTable.Where(gocassa.Eq("ChannelID", "0"), gocassa.LTE("createdat", t)).Read(&messages).WithOptions(gocassa.Options{
 		ClusteringOrder: []gocassa.ClusteringOrderColumn{
 			{gocassa.DESC, "createdat"},
 		},
