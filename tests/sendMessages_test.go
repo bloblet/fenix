@@ -1,7 +1,9 @@
 package tests
 
 import (
+	"fmt"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -20,6 +22,7 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	a.Prepare()
 	lis, err := net.Listen("tcp", "localhost:4545")
 
+	fmt.Println(t.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,13 +41,13 @@ func setupTestCase(t *testing.T) func(t *testing.T) {
 	}()
 
 	return func(t *testing.T) {
+		fmt.Printf(t.Name())
 		stop <- true
 	}
 }
 
 func TestSendMessage(t *testing.T) {
 	teardownTestCase := setupTestCase(t)
-	defer teardownTestCase(t)
 
 	c := client.Client{}
 	c.Connect("test", "localhost:4545")
@@ -69,6 +72,7 @@ func TestSendMessage(t *testing.T) {
 		t.Error("Timeout")
 	}
 	<-done
+	teardownTestCase(t)
 }
 
 func TestRequestMessageHistory(t *testing.T) {
@@ -77,5 +81,12 @@ func TestRequestMessageHistory(t *testing.T) {
 
 	c := client.Client{}
 	c.Connect("test", "localhost:4545")
+	message := make([]string, 60)
 
+	for i, _ := range message {
+		message[i] = strconv.FormatInt(int64(i), 10)
+		c.SendMessage(message[i])
+	}
+
+	fmt.Printf("%v", c.RequestMessageHistory(time.Now().Add(-time.Hour)))
 }
