@@ -5,3 +5,5 @@ fenix-server
 fenix-client
 gen.bat
 .idea
+main
+.cassandraWorkbench/
