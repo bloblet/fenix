@@ -64,7 +64,7 @@ type User struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Identification
-	ID            string `protobuf:"bytes,1,opt,name=MessageID,proto3" json:"MessageID,omitempty"`
+	ID            string `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Username      string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	Discriminator string `protobuf:"bytes,3,opt,name=discriminator,proto3" json:"discriminator,omitempty"`
 	// Social
@@ -271,7 +271,7 @@ type Authenticate struct {
 	unknownFields protoimpl.UnknownFields
 
 	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	ID    string `protobuf:"bytes,2,opt,name=MessageID,proto3" json:"MessageID,omitempty"`
+	ID    string `protobuf:"bytes,2,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
 func (x *Authenticate) Reset() {

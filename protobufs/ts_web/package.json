@@ -1,9 +1,0 @@
-{
-  "name": "fenix_protobufs",
-  "version": "6.0.1",
-  "description": "Offical protobufs for fenix",
-  "main": "index.js",
-  "repository": "https://github.com/bloblet/fenix/tree/master/protobufs/ts_web",
-  "author": "https://github.com/bloblet",
-  "license": "MIT"
-}
