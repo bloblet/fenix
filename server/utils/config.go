@@ -34,13 +34,28 @@ type Config struct {
 func LoadConfig(fileName string) *Config {
 
 	f, err := os.OpenFile(fileName, os.O_RDONLY, 0)
+
 	if err != nil {
 		log.WithFields(
 			log.Fields{
 				"fileName": fileName,
 				"err":      err,
 			},
-		).Panic("Error opening config file")
+		).Warn("Error opening config file, using defaults.")
+
+		return &Config{
+			API: API{
+				Host: "localhost",
+				Port: 4545,
+			},
+			Database: Database{
+				Database: "development",
+				Host: "localhost",
+			},
+			Logger: Logger{
+				LogLevel: "error",
+			},
+		}
 	}
 
 	defer f.Close()
