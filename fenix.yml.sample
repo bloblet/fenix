@@ -1,0 +1,18 @@
+# Database specific settings.
+database:
+  # Location of mongodb server
+  host: localhost
+  # Database name for fenix to put collections in
+  database: development
+
+# API specific settings
+api:
+  # Listening address (0.0.0.0 for all addresses)
+  host: 0.0.0.0
+  # Port to listen on
+  port: 4545
+
+# Logger specific settings
+logger:
+  # Min log level to print logs at (Defaults to error if omitted)
+  loglevel: error

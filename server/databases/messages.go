@@ -1,25 +1,31 @@
 package databases
 
 import (
-	"fmt"
 	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/bloblet/fenix/server/models/database"
+	"github.com/bloblet/fenix/server/utils"
 	"github.com/go-bongo/bongo"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2/bson"
 	"time"
 )
 
-
+var config = utils.LoadConfig("fenix.yml")
 
 func NewMessageDB() *MessageDB {
 	db := MessageDB{}
 	db.MessageCache = make(map[string]*pb.Message)
 	db.MessageCacheExpiry = make(map[string]time.Time)
-	conn, err := bongo.Connect(&bongo.Config{ConnectionString: "localhost", Database: "production"})
+	conn, err := bongo.Connect(&bongo.Config{ConnectionString: config.Database.Host, Database: config.Database.Database})
 
 	if err != nil {
-		fmt.Printf("%v\n", err)
-		panic(err)
+		utils.Log().WithFields(
+			log.Fields{
+				"host":     config.Database.Host,
+				"database": config.Database.Database,
+				"error":    err,
+			},
+		).Panic("Error connecting to mongodb")
 	}
 	db.conn = conn
 
@@ -31,7 +37,7 @@ type MessageDB struct {
 	// TODO: Change to a channel cache when channels are implemented
 	MessageCache       map[string]*pb.Message
 	MessageCacheExpiry map[string]time.Time
-	conn *bongo.Connection
+	conn               *bongo.Connection
 }
 
 func (db *MessageDB) PurgeCache() {
@@ -64,7 +70,15 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Messa
 	err := db.conn.Collection("messages").Save(msg)
 
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		utils.Log().WithFields(
+			log.Fields{
+				"userID":        userID,
+				"contentLength": len(msg.Content),
+				"createdAt":     msg.CreatedAt,
+				"channelID":     msg.ChannelID,
+				"err":           err,
+			},
+		).Error("Error creating message")
 		return nil
 	}
 
@@ -83,7 +97,12 @@ func (db MessageDB) FetchMessage(id string) *pb.Message {
 	err := db.conn.Collection("messages").FindById(bson.ObjectId(id), msg)
 
 	if err != nil {
-		panic(err)
+		utils.Log().WithFields(
+			log.Fields{
+				"messageID": id,
+				"err":       err,
+			},
+		).Error("Error fetching message")
 	}
 
 	return msg.MarshalToPB()

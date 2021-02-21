@@ -2,7 +2,7 @@ package database
 
 import (
 	"encoding/json"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 )
 
 // User is the current datatype for fenix users.
@@ -24,10 +24,12 @@ type User struct {
 func (user *User) ToJSON() string {
 	b, err := json.Marshal(user)
 	if err != nil {
-		fmt.Print("Encountered an error while serializing a User object.  ")
-		fmt.Print(err)
-		fmt.Print("\n")
-		panic(err)
+		log.WithFields(
+			log.Fields{
+				"byteLength": len(b),
+				"error":      err,
+			},
+		).Error("Encountered an error while serializing a User object.")
 	}
 
 	return string(b)

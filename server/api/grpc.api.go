@@ -4,16 +4,21 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"log"
-	"net"
-	"time"
-
 	pb "github.com/bloblet/fenix/protobufs/go"
 	db "github.com/bloblet/fenix/server/databases"
+	"github.com/bloblet/fenix/server/utils"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"net"
+	"strconv"
+	"time"
 )
+
+var config = utils.LoadConfig("fenix.yml")
+var addr = config.API.Host + ":" + strconv.Itoa(config.API.Port)
 
 func generateToken(n int) (string, error) {
 	b := make([]byte, n)
@@ -29,9 +34,9 @@ type user struct {
 }
 
 type GRPCApi struct {
-	S             *grpc.Server
-	sessions      map[string]user
-	msgDB         *db.MessageDB
+	S        *grpc.Server
+	sessions map[string]user
+	msgDB    *db.MessageDB
 	pb.UnimplementedAuthServer
 	pb.UnimplementedMessagesServer
 }
@@ -46,18 +51,27 @@ func (api *GRPCApi) Prepare() {
 
 func (api *GRPCApi) Listen(lis net.Listener) {
 	if err := api.S.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		utils.Log().WithFields(
+			log.Fields{
+				"addr": addr,
+				"err":  err,
+			},
+		).Panic("Failed to serve API")
 	}
 }
 
 func (api *GRPCApi) Serve() {
 	api.Prepare()
-	log.Print("Serving on 0.0.0.0:4000")
-	lis, err := net.Listen("tcp", "0.0.0.0:4000")
+	utils.Log().Infof("Serving on %v", addr)
+	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		utils.Log().WithFields(
+			log.Fields{
+				"addr": addr,
+				"err":  err,
+			},
+		).Panic("Failed to listen on address")
 	}
-
 	api.Listen(lis)
 }
 
@@ -73,7 +87,7 @@ func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) user {
 // To avoid cluttering all the protobuf requests with token parameters, and to avoid messy bidirectional stream workarounds,
 // Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
 // when it expires.  If anyone has a better solution, open an issue.
-func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
+func (api *GRPCApi) Login(ctx context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
 	sessionToken, err := generateToken(16)
 	if err != nil {
 		return nil, err
@@ -89,6 +103,15 @@ func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 		<-timer.C
 		delete(api.sessions, sessionToken)
 	}()
+	p, _ := peer.FromContext(ctx)
+
+	utils.Log().WithFields(
+		log.Fields{
+			"userID":   user.ID,
+			"username": user.Username,
+			"ip":       p.Addr,
+		},
+	).Trace("login")
 
 	return &pb.AuthAck{
 		Username:     user.Username,
@@ -98,16 +121,29 @@ func (api *GRPCApi) Login(_ context.Context, in *pb.ClientAuth) (*pb.AuthAck, er
 }
 
 func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
-	api.utilCheckSessionToken(ctx)
-	//session := api.utilCreateMessageSession()
+	user := api.utilCheckSessionToken(ctx)
+	messageHistory := api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime())
 
-	return api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime()), nil
+	p, _ := peer.FromContext(ctx)
+	utils.Log().WithFields(
+		log.Fields{
+			"userID":        user.ID,
+			"username":      user.Username,
+			"ip":            p.Addr,
+			"numOfMessages": messageHistory.NumberOfMessages,
+		},
+	).Trace("getMessageHistory")
+
+	return messageHistory, nil
 }
 
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
-	user := api.utilCheckSessionToken(stream.Context())
+	ctx := stream.Context()
+
+	user := api.utilCheckSessionToken(ctx)
+
 	if user.Username == "" {
-		return grpc.ErrClientConnClosing
+		return InvalidUsername{}
 	}
 
 	// Pass any sent messages to the client
@@ -117,25 +153,54 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 		}
 	}()
 
-	//k := api.utilCreateMessageSession()
+	p, _ := peer.FromContext(ctx)
+
+	utils.Log().WithFields(
+		log.Fields{
+			"userID":   user.ID,
+			"username": user.Username,
+			"ip":       p.Addr,
+		},
+	).Trace("messageStream")
 
 	// Send messages the client requests
 	for true {
 		// Wait for the next message request
 		sendRequest, err := stream.Recv()
 		if err != nil {
-			return grpc.ErrClientConnClosing
+			return err
 		}
 
 		msg := api.msgDB.NewMessage(sendRequest, user.Username)
+
+		utils.Log().WithFields(
+			log.Fields{
+				"userID":        user.ID,
+				"contentLength": len(sendRequest.GetContent()),
+				"messageID":     msg.GetMessageID(),
+			},
+		).Trace("createMessage")
+
 		// Notify all clients of the message
 		api.notifyClientsOfMessage(msg)
 	}
-	return grpc.ErrClientConnClosing
+	return ConnectionClosed{}
 }
 
 func (api *GRPCApi) notifyClientsOfMessage(message *pb.Message) {
 	for _, val := range api.sessions {
 		val.messages <- message
 	}
+}
+
+type InvalidUsername struct{}
+
+func (e InvalidUsername) Error() string {
+	return "InvalidUsername"
+}
+
+type ConnectionClosed struct{}
+
+func (e ConnectionClosed) Error() string {
+	return "ConnectionClosed"
 }
