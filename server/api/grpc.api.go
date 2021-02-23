@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-var config = utils.LoadConfig("fenix.yml")
+var config = utils.LoadConfig()
 var addr = config.API.Host + ":" + strconv.Itoa(config.API.Port)
 
 func generateToken(n int) (string, error) {

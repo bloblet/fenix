@@ -4,7 +4,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"os"
+	"sync"
 )
+
+var configOnce = sync.Once{}
+var config *Config
 
 type API struct {
 	Host string `yaml:"host"`
@@ -31,19 +35,25 @@ type Config struct {
 	Database Database `yaml:"database"`
 }
 
-func LoadConfig(fileName string) *Config {
+func LoadConfig() *Config {
+	configOnce.Do(readConfig)
 
-	f, err := os.OpenFile(fileName, os.O_RDONLY, 0)
+	return config
+}
+
+func readConfig() {
+
+	f, err := os.OpenFile("fenix.yml", os.O_RDONLY, 0)
 
 	if err != nil {
 		log.WithFields(
 			log.Fields{
-				"fileName": fileName,
+				"fileName": "fenix.yml",
 				"err":      err,
 			},
-		).Warn("Error opening config file, using defaults.")
+		).Info("Error opening config file, using defaults.")
 
-		return &Config{
+		config = &Config{
 			API: API{
 				Host: "localhost",
 				Port: 4545,
@@ -56,11 +66,12 @@ func LoadConfig(fileName string) *Config {
 				LogLevel: "error",
 			},
 		}
+		return
 	}
 
 	defer f.Close()
 
-	config := Config{
+	c := Config{
 		Logger: Logger{
 			LogLevel: "error",
 		},
@@ -68,7 +79,7 @@ func LoadConfig(fileName string) *Config {
 
 	decoder := yaml.NewDecoder(f)
 	decoder.SetStrict(true)
-	err = decoder.Decode(&config)
+	err = decoder.Decode(&c)
 
 	if err != nil {
 		log.WithFields(
@@ -78,5 +89,5 @@ func LoadConfig(fileName string) *Config {
 		).Panic("Error parsing config file")
 	}
 
-	return &config
+	config = &c
 }

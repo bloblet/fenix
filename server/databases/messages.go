@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var config = utils.LoadConfig("fenix.yml")
+var config = utils.LoadConfig()
 
 func NewMessageDB() *MessageDB {
 	db := MessageDB{}

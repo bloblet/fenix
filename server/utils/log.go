@@ -10,10 +10,10 @@ import (
 )
 
 var logger *log.Logger
-var once = sync.Once{}
+var loggerOnce sync.Once
 
 func Log() *log.Logger {
-	once.Do(setupLogger)
+	loggerOnce.Do(setupLogger)
 	return logger
 }
 
@@ -49,13 +49,16 @@ func (f *FenixFormatter) Format(entry *log.Entry) ([]byte, error) {
 	}
 
 	function := strings.Split(entry.Caller.Function, "/")
-	function_name := function[len(function)-1]
+	functionName := function[len(function)-1]
 
 	d := fmt.Sprintf(
 		`[%v] %v %v      %v
     %v %v
 `,
-		entry.Time.Format(time.RFC3339), color.HiMagentaString("[%v]", level), color.HiGreenString("%20v", function_name), color.GreenString("%v:%v", entry.Caller.File, entry.Caller.Line),
+		entry.Time.Format(time.RFC3339),
+		color.HiMagentaString("[%v]", level),
+		color.HiGreenString("%20v", functionName),
+		color.GreenString("%v:%v", entry.Caller.File, entry.Caller.Line),
 		keyColor.Sprint("[msg]"),
 		color.MagentaString(entry.Message),
 	)
@@ -113,7 +116,7 @@ func TestLogger() {
 func setupLogger() {
 	l := log.New()
 	l.ReportCaller = true
-	var config = LoadConfig("fenix.yml")
+	var config = LoadConfig()
 	l.SetFormatter(&FenixFormatter{})
 
 	level, err := log.ParseLevel(config.Logger.LogLevel)
