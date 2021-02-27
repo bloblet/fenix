@@ -1,4 +1,4 @@
-package database
+package models
 
 import (
 	pb "github.com/bloblet/fenix/protobufs/go"
@@ -19,7 +19,7 @@ func (m Message) MarshalToPB() *pb.Message {
 	message := pb.Message{}
 	message.Content = m.Content
 	message.UserID = m.UserID
-	message.MessageID = m.Id.String()
+	message.MessageID = m.Id.Hex()
 	message.SentAt = timestamppb.New(m.CreatedAt)
 	return &message
 }

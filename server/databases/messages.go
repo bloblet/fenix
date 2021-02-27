@@ -2,7 +2,7 @@ package databases
 
 import (
 	pb "github.com/bloblet/fenix/protobufs/go"
-	"github.com/bloblet/fenix/server/models/database"
+	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
 	"github.com/go-bongo/bongo"
 	log "github.com/sirupsen/logrus"
@@ -61,12 +61,13 @@ func (db *MessageDB) PurgeCache() {
 
 func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Message {
 
-	msg := &database.Message{
+	msg := &models.Message{
 		UserID:    userID,
 		Content:   cMsg.Content,
 		CreatedAt: time.Now(),
 		ChannelID: "0",
 	}
+
 	err := db.conn.Collection("messages").Save(msg)
 
 	if err != nil {
@@ -92,25 +93,25 @@ func (db *MessageDB) GetMessage(id string) *pb.Message {
 	return db.MessageCache[id]
 }
 
-func (db MessageDB) FetchMessage(id string) *pb.Message {
-	msg := &database.Message{}
-	err := db.conn.Collection("messages").FindById(bson.ObjectId(id), msg)
-
-	if err != nil {
-		utils.Log().WithFields(
-			log.Fields{
-				"messageID": id,
-				"err":       err,
-			},
-		).Error("Error fetching message")
+func (db MessageDB) FetchMessage(id string) (*pb.Message, error) {
+	if !bson.IsObjectIdHex(id) {
+		return nil, InvalidID{}
 	}
 
-	return msg.MarshalToPB()
+	objId := bson.ObjectIdHex(id)
+	msg := &models.Message{}
+	err := db.conn.Collection("messages").FindById(objId, msg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return msg.MarshalToPB(), nil
 }
 
-func (db MessageDB) MaybeGetMessage(id string) *pb.Message {
+func (db MessageDB) MaybeGetMessage(id string) (*pb.Message, error) {
 	if msg := db.GetMessage(id); msg != nil {
-		return msg
+		return msg, nil
 	}
 	return db.FetchMessage(id)
 }
@@ -122,10 +123,22 @@ func (db MessageDB) FetchMessagesAfter(t time.Time) *pb.MessageHistory {
 
 	msgHistory := make([]*pb.Message, 0)
 
-	var result database.Message
+	var result models.Message
 	for results.Next(&result) {
 		msgHistory = append(msgHistory, result.MarshalToPB())
 	}
+	history := &pb.MessageHistory{
+		Messages: msgHistory,
+		NumberOfMessages: int64(len(msgHistory)),
+		Pages: 1,
+	}
+	println("f")
+	return history
+}
 
-	return &pb.MessageHistory{Messages: msgHistory}
+type InvalidID struct {
+}
+
+func (id InvalidID) Error() string {
+	return "InvalidID"
 }

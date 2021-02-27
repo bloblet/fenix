@@ -1,7 +1,8 @@
-package database
+package models
 
 import (
 	"encoding/json"
+	"github.com/bloblet/fenix/server/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +25,7 @@ type User struct {
 func (user *User) ToJSON() string {
 	b, err := json.Marshal(user)
 	if err != nil {
-		log.WithFields(
+		utils.Log().WithFields(
 			log.Fields{
 				"byteLength": len(b),
 				"error":      err,

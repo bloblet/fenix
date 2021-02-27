@@ -12,6 +12,13 @@ import (
 var logger *log.Logger
 var loggerOnce sync.Once
 
+func SetLevel(level log.Level) *log.Logger {
+	loggerOnce.Do(setupLogger)
+	logger.Level = level
+
+	return logger
+}
+
 func Log() *log.Logger {
 	loggerOnce.Do(setupLogger)
 	return logger

@@ -1,4 +1,4 @@
-package database
+package models
 
 type RawEmoji struct {
 	Name string

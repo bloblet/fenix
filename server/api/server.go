@@ -15,6 +15,7 @@ import (
 	"net"
 	"strconv"
 	"time"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 var config = utils.LoadConfig()
@@ -47,6 +48,14 @@ func (api *GRPCApi) Prepare() {
 	api.sessions = make(map[string]user)
 	pb.RegisterAuthServer(api.S, api)
 	pb.RegisterMessagesServer(api.S, api)
+}
+
+func (api *GRPCApi) Bufconn() *bufconn.Listener {
+	api.Prepare()
+	b := bufconn.Listen(1024 * 1024)
+	go api.Listen(b)
+
+	return b
 }
 
 func (api *GRPCApi) Listen(lis net.Listener) {

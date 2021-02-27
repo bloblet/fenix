@@ -1,4 +1,4 @@
-package database
+package models
 
 type Comment struct {
 	UserID  string

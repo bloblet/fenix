@@ -66,4 +66,4 @@ jobs:
         uses: supercharge/mongodb-github-action@1.3.0
           
       - name: Run tests
-        run: go test ./tests
+        run: go test ./...

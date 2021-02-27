@@ -2,9 +2,9 @@ package client
 
 import (
 	"context"
+	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"log"
-
+	"net"
 	"time"
 
 	pb "github.com/bloblet/fenix/protobufs/go"
@@ -18,12 +18,12 @@ var timeout = 10 * time.Second
 type Client struct {
 	token         string
 	Username      string
-	conn          *grpc.ClientConn
-	messageStream pb.Messages_HandleMessagesClient
+	Conn          *grpc.ClientConn
+	MessageStream pb.Messages_HandleMessagesClient
 	Debug         bool
 	SessionTokens chan *pb.AuthAck
 	Messages      chan *pb.Message
-	msgClient     pb.MessagesClient
+	MsgClient     pb.MessagesClient
 	LastMessageID string
 }
 
@@ -39,7 +39,7 @@ func (c *Client) keepalive(a pb.AuthClient, username string, sessionTokens chan 
 		cancel()
 
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		// Update values
 		c.token = loginAck.GetSessionToken()
@@ -59,15 +59,31 @@ func (c *Client) auth(ctx context.Context) context.Context {
 
 func (c *Client) dial(addr string) {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(timeout), grpc.WithBlock())
-	c.conn = conn
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithBlock())
+	c.Conn = conn
+
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		panic(err)
+	}
+}
+
+func (c *Client) bufdial(lis *bufconn.Listener)  {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+		return lis.Dial()
+	}))
+	c.Conn = conn
+
+	if err != nil {
+		panic(err)
 	}
 }
 
 func (c *Client) initAuthClient(username string) {
-	a := pb.NewAuthClient(c.conn)
+	a := pb.NewAuthClient(c.Conn)
 
 	// The channel is to make sure we don't try to do anything with a null SessionToken.
 	c.SessionTokens = make(chan *pb.AuthAck)
@@ -77,21 +93,21 @@ func (c *Client) initAuthClient(username string) {
 }
 
 func (c *Client) initMessageClient() {
-	c.msgClient = pb.NewMessagesClient(c.conn)
+	c.MsgClient = pb.NewMessagesClient(c.Conn)
 
-	messageStream, err := c.msgClient.HandleMessages(c.auth(context.Background()))
+	messageStream, err := c.MsgClient.HandleMessages(c.auth(context.Background()))
 
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	c.messageStream = messageStream
+	c.MessageStream = messageStream
 	c.Messages = make(chan *pb.Message)
 
 	go func() {
 		for true {
-			msg, err := c.messageStream.Recv()
+			msg, err := c.MessageStream.Recv()
 			if err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 			c.LastMessageID = msg.MessageID
 			c.Messages <- msg
@@ -107,8 +123,18 @@ func (c *Client) Connect(username string, addr string) {
 	c.initMessageClient()
 }
 
+func (c *Client) BuffConnect(username string, lis *bufconn.Listener, setup bool) {
+	c.bufdial(lis)
+
+	if setup {
+		c.initAuthClient(username)
+
+		c.initMessageClient()
+	}
+}
+
 func (c *Client) RequestMessageHistory(lastMessageTime time.Time) []*pb.Message {
-	history, err := c.msgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: timestamppb.New(time.Now().Add(-time.Hour))})
+	history, err := c.MsgClient.GetMessageHistory(c.auth(context.Background()), &pb.RequestMessageHistory{LastMessageTime: timestamppb.New(time.Now().Add(-time.Hour))})
 	if err != nil {
 		panic(err)
 	}
@@ -116,6 +142,6 @@ func (c *Client) RequestMessageHistory(lastMessageTime time.Time) []*pb.Message 
 	return history.GetMessages()
 }
 
-func (c *Client) SendMessage(message string) {
-	c.messageStream.Send(&pb.CreateMessage{Content: message})
+func (c *Client) SendMessage(message string) error {
+	return c.MessageStream.Send(&pb.CreateMessage{Content: message})
 }
