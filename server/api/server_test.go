@@ -151,6 +151,8 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 		}
 	}
 
+	time.Sleep(2 * time.Second)
+
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
 	md := metadata.New(map[string]string{"session-token": ack.SessionToken})
@@ -160,7 +162,6 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 		LastMessageTime: timestamppb.New(before),
 	}
 
-	time.Sleep(1000)
 	history, err := m.GetMessageHistory(ctx, req)
 
 	if err != nil {
