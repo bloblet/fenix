@@ -150,7 +150,6 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 			Content:   makeString(50),
 			CreatedAt: time.Now(),
 			ChannelID: "0",
-
 		}
 		msg.SetupMessage()
 

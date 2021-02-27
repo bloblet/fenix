@@ -8,7 +8,7 @@ import (
 )
 
 type Message struct {
-	Saved chan bool `bson:"-"`
+	Saved              chan bool `bson:"-"`
 	bongo.DocumentBase `bson:",inline"`
 	UserID             string
 	CreatedAt          time.Time
