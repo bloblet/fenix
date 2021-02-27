@@ -106,14 +106,17 @@ func TestGRPCApi_HandleMessages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	gotMessage := false
 
 	go func() {
 		time.Sleep(time.Second * 10)
-		t.Fatal("Timeout on message receiving")
+		if !gotMessage {
+			t.Fatal("Timeout on message receiving")
+		}
 	}()
 
 	msg := <-msgChan
-
+	gotMessage = true
 	if testing.Verbose() {
 		utils.Log().WithFields(
 			log.Fields{
@@ -138,21 +141,37 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 	// Populate Database
 	before := time.Now()
 
+	numberFinished := 0
+	done := make(chan bool)
+
 	for i := 0; i <= 50; i++ {
 		msg := &models.Message{
 			UserID:    ack.Username,
 			Content:   makeString(50),
 			CreatedAt: time.Now(),
 			ChannelID: "0",
+
 		}
+		msg.SetupMessage()
+
+		go func() {
+			<-msg.Saved
+			numberFinished = numberFinished + 1
+			println(numberFinished)
+			if numberFinished == 50 {
+				done <- true
+			}
+		}()
+
 		err := api.msgDB.Conn.Collection("messages").Save(msg)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	time.Sleep(2 * time.Second)
+	<-done
 
+	print("Finished")
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
 	md := metadata.New(map[string]string{"session-token": ack.SessionToken})

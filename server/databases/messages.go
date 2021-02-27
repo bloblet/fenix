@@ -67,6 +67,7 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Messa
 		CreatedAt: time.Now(),
 		ChannelID: "0",
 	}
+	msg.SetupMessage()
 
 	err := db.Conn.Collection("messages").Save(msg)
 
@@ -100,6 +101,7 @@ func (db MessageDB) FetchMessage(id string) (*pb.Message, error) {
 
 	objId := bson.ObjectIdHex(id)
 	msg := &models.Message{}
+
 	err := db.Conn.Collection("messages").FindById(objId, msg)
 
 	if err != nil {

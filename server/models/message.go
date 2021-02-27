@@ -8,6 +8,7 @@ import (
 )
 
 type Message struct {
+	Saved chan bool `bson:"-"`
 	bongo.DocumentBase `bson:",inline"`
 	UserID             string
 	CreatedAt          time.Time
@@ -15,11 +16,20 @@ type Message struct {
 	Content            string
 }
 
-func (m Message) MarshalToPB() *pb.Message {
+func (m *Message) SetupMessage() {
+	m.Saved = make(chan bool, 1)
+}
+
+func (m *Message) MarshalToPB() *pb.Message {
 	message := pb.Message{}
 	message.Content = m.Content
 	message.UserID = m.UserID
 	message.MessageID = m.Id.Hex()
 	message.SentAt = timestamppb.New(m.CreatedAt)
 	return &message
+}
+
+func (m *Message) AfterSave(b *bongo.Collection) error {
+	m.Saved <- true
+	return nil
 }
