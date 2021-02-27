@@ -11,11 +11,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"net"
 	"strconv"
 	"time"
-	"google.golang.org/grpc/test/bufconn"
 )
 
 var config = utils.LoadConfig()

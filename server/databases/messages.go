@@ -128,9 +128,9 @@ func (db MessageDB) FetchMessagesAfter(t time.Time) *pb.MessageHistory {
 		msgHistory = append(msgHistory, result.MarshalToPB())
 	}
 	history := &pb.MessageHistory{
-		Messages: msgHistory,
+		Messages:         msgHistory,
 		NumberOfMessages: int64(len(msgHistory)),
-		Pages: 1,
+		Pages:            1,
 	}
 	println("f")
 	return history

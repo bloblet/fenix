@@ -69,7 +69,7 @@ func (c *Client) dial(addr string) {
 	}
 }
 
-func (c *Client) bufdial(lis *bufconn.Listener)  {
+func (c *Client) bufdial(lis *bufconn.Listener) {
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithInsecure(), grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {

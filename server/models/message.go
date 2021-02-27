@@ -9,10 +9,10 @@ import (
 
 type Message struct {
 	bongo.DocumentBase `bson:",inline"`
-	UserID    string
-	CreatedAt time.Time
-	ChannelID string
-	Content   string
+	UserID             string
+	CreatedAt          time.Time
+	ChannelID          string
+	Content            string
 }
 
 func (m Message) MarshalToPB() *pb.Message {

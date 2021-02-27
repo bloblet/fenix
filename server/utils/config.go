@@ -60,7 +60,7 @@ func readConfig() {
 			},
 			Database: Database{
 				Database: "development",
-				Host: "localhost",
+				Host:     "localhost",
 			},
 			Logger: Logger{
 				LogLevel: "error",

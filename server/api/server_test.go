@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 )
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func makeString(n int) string {
@@ -35,7 +36,7 @@ func login(username string, t *testing.T) (*GRPCApi, *client.Client, *pb.AuthCli
 
 	a := pb.NewAuthClient(cli.Conn)
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second * 4)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
 	clientAuth := pb.ClientAuth{
 		Username: "testApiLogin",
@@ -50,14 +51,14 @@ func login(username string, t *testing.T) (*GRPCApi, *client.Client, *pb.AuthCli
 	return api, &cli, &a, ack
 }
 
-func connectToMessages(username string, t *testing.T) (*GRPCApi, *client.Client, pb.MessagesClient, pb.Messages_HandleMessagesClient, *pb.AuthAck){
+func connectToMessages(username string, t *testing.T) (*GRPCApi, *client.Client, pb.MessagesClient, pb.Messages_HandleMessagesClient, *pb.AuthAck) {
 	api, cli, _, ack := login(username, t)
 
 	token := ack.SessionToken
 
 	m := pb.NewMessagesClient(cli.Conn)
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second * 4)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
 	md := metadata.New(map[string]string{"session-token": token})
 	ctx = metadata.NewOutgoingContext(ctx, md)
@@ -75,8 +76,8 @@ func TestGRPCApi_Login(t *testing.T) {
 	if testing.Verbose() {
 		utils.Log().WithFields(
 			log.Fields{
-				"username": ack.Username,
-				"expiry": ack.Expiry.AsTime().Format(time.RFC3339),
+				"username":     ack.Username,
+				"expiry":       ack.Expiry.AsTime().Format(time.RFC3339),
 				"sessionToken": ack.SessionToken,
 			},
 		).Info("TestAPILogin")
@@ -115,10 +116,10 @@ func TestGRPCApi_HandleMessages(t *testing.T) {
 	if testing.Verbose() {
 		utils.Log().WithFields(
 			log.Fields{
-				"content": msg.Content,
-				"sentAt": msg.SentAt.AsTime().Format(time.RFC3339),
+				"content":   msg.Content,
+				"sentAt":    msg.SentAt.AsTime().Format(time.RFC3339),
 				"messageID": msg.MessageID,
-				"userID": msg.UserID,
+				"userID":    msg.UserID,
 			},
 		).Info("TestApiHandleMessages")
 	}
@@ -138,13 +139,13 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 
 	for i := 0; i <= 50; i++ {
 		msg := pb.CreateMessage{
-			Content:   makeString(50),
+			Content: makeString(50),
 		}
 
 		api.msgDB.NewMessage(&msg, ack.Username)
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second * 4)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
 	md := metadata.New(map[string]string{"session-token": ack.SessionToken})
 	ctx = metadata.NewOutgoingContext(ctx, md)
