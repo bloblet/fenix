@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bloblet/fenix/client/client"
 	pb "github.com/bloblet/fenix/protobufs/go"
+	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
@@ -138,11 +139,16 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 	before := time.Now()
 
 	for i := 0; i <= 50; i++ {
-		msg := pb.CreateMessage{
-			Content: makeString(50),
+		msg := &models.Message{
+			UserID:    ack.Username,
+			Content:   makeString(50),
+			CreatedAt: time.Now(),
+			ChannelID: "0",
 		}
-
-		api.msgDB.NewMessage(&msg, ack.Username)
+		err := api.msgDB.Conn.Collection("messages").Save(msg)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)

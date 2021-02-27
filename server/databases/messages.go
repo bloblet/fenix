@@ -27,7 +27,7 @@ func NewMessageDB() *MessageDB {
 			},
 		).Panic("Error connecting to mongodb")
 	}
-	db.conn = conn
+	db.Conn = conn
 
 	go db.PurgeCache()
 	return &db
@@ -37,7 +37,7 @@ type MessageDB struct {
 	// TODO: Change to a channel cache when channels are implemented
 	MessageCache       map[string]*pb.Message
 	MessageCacheExpiry map[string]time.Time
-	conn               *bongo.Connection
+	Conn               *bongo.Connection
 }
 
 func (db *MessageDB) PurgeCache() {
@@ -68,7 +68,7 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Messa
 		ChannelID: "0",
 	}
 
-	err := db.conn.Collection("messages").Save(msg)
+	err := db.Conn.Collection("messages").Save(msg)
 
 	if err != nil {
 		utils.Log().WithFields(
@@ -100,7 +100,7 @@ func (db MessageDB) FetchMessage(id string) (*pb.Message, error) {
 
 	objId := bson.ObjectIdHex(id)
 	msg := &models.Message{}
-	err := db.conn.Collection("messages").FindById(objId, msg)
+	err := db.Conn.Collection("messages").FindById(objId, msg)
 
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (db MessageDB) MaybeGetMessage(id string) (*pb.Message, error) {
 }
 
 func (db MessageDB) FetchMessagesAfter(t time.Time) *pb.MessageHistory {
-	resultSet := db.conn.Collection("messages").Find(bson.D{{"channelid", "0"}, {"createdat", bson.D{{"$gt", t}}}})
+	resultSet := db.Conn.Collection("messages").Find(bson.D{{"channelid", "0"}, {"createdat", bson.D{{"$gt", t}}}})
 
 	results := resultSet.Query.Sort("createdAt").Limit(50).Iter()
 
@@ -132,7 +132,8 @@ func (db MessageDB) FetchMessagesAfter(t time.Time) *pb.MessageHistory {
 		NumberOfMessages: int64(len(msgHistory)),
 		Pages:            1,
 	}
-	println("f")
+
+	println(len(msgHistory))
 	return history
 }
 
