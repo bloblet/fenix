@@ -160,6 +160,7 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 		LastMessageTime: timestamppb.New(before),
 	}
 
+	time.Sleep(1)
 	history, err := m.GetMessageHistory(ctx, req)
 
 	if err != nil {
