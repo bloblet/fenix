@@ -26,7 +26,7 @@ func main() {
 	fmt.Print("Pick a username: ")
 	username, _ := reader.ReadString('\n')
 
-	c.Connect(sanitize(username), "localhost:4545")
+	c.Connect(sanitize(username), *addr)
 
 	go func() {
 		for true {
