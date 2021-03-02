@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"github.com/bloblet/fenix/client/client"
 	"github.com/pborman/ansi"
@@ -15,6 +16,11 @@ func sanitize(dirty string) string {
 }
 
 func main() {
+	addr := flag.String("addr", "localhost:4545", "Address of fenix to connect to")
+	flag.Parse()
+
+	fmt.Printf("Connecting to %v\n", *addr)
+
 	c := client.Client{}
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Pick a username: ")
