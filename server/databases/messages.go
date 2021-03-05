@@ -4,8 +4,9 @@ import (
 	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
-	"github.com/go-bongo/bongo"
+	"github.com/kamva/mgm/v3"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/mgo.v2/bson"
 	"time"
 )
@@ -16,18 +17,17 @@ func NewMessageDB() *MessageDB {
 	db := MessageDB{}
 	db.MessageCache = make(map[string]*pb.Message)
 	db.MessageCacheExpiry = make(map[string]time.Time)
-	conn, err := bongo.Connect(&bongo.Config{ConnectionString: config.Database.Host, Database: config.Database.Database})
+	err := mgm.SetDefaultConfig(nil, config.Database.Database, options.Client().ApplyURI(config.Database.URI))
 
 	if err != nil {
 		utils.Log().WithFields(
 			log.Fields{
-				"host":     config.Database.Host,
+				"host":     config.Database.URI,
 				"database": config.Database.Database,
 				"error":    err,
 			},
 		).Panic("Error connecting to mongodb")
 	}
-	db.Conn = conn
 
 	go db.PurgeCache()
 	return &db
@@ -37,7 +37,6 @@ type MessageDB struct {
 	// TODO: Change to a channel cache when channels are implemented
 	MessageCache       map[string]*pb.Message
 	MessageCacheExpiry map[string]time.Time
-	Conn               *bongo.Connection
 }
 
 func (db *MessageDB) PurgeCache() {
@@ -59,7 +58,12 @@ func (db *MessageDB) PurgeCache() {
 	}
 }
 
-func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Message {
+func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string, sync ...bool) *pb.Message {
+	_sync := false
+
+	if len(sync) != 0 {
+		_sync = sync[0]
+	}
 
 	msg := &models.Message{
 		UserID:    userID,
@@ -69,7 +73,7 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Messa
 	}
 	msg.SetupMessage()
 
-	err := db.Conn.Collection("messages").Save(msg)
+	err := mgm.Coll(msg).Create(msg)
 
 	if err != nil {
 		utils.Log().WithFields(
@@ -86,6 +90,10 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string) *pb.Messa
 
 	m := msg.MarshalToPB()
 
+	if _sync {
+		msg.WaitForSave()
+	}
+
 	db.MessageCacheExpiry[m.MessageID] = time.Now().Add(5 * time.Second)
 	return m
 }
@@ -99,10 +107,9 @@ func (db MessageDB) FetchMessage(id string) (*pb.Message, error) {
 		return nil, InvalidID{}
 	}
 
-	objId := bson.ObjectIdHex(id)
 	msg := &models.Message{}
 
-	err := db.Conn.Collection("messages").FindById(objId, msg)
+	err := mgm.Coll(msg).FindByID(id, msg)
 
 	if err != nil {
 		return nil, err
@@ -118,25 +125,33 @@ func (db MessageDB) MaybeGetMessage(id string) (*pb.Message, error) {
 	return db.FetchMessage(id)
 }
 
-func (db MessageDB) FetchMessagesAfter(t time.Time) *pb.MessageHistory {
-	resultSet := db.Conn.Collection("messages").Find(bson.D{{"channelid", "0"}, {"createdat", bson.D{{"$gt", t}}}})
+func (db MessageDB) FetchMessagesAfter(t time.Time) (*pb.MessageHistory, error) {
+	msgs := make([]*models.Message, 0)
 
-	results := resultSet.Query.Sort("createdAt").Limit(50).Iter()
+	err := mgm.Coll(&models.Message{}).SimpleFind(
+		&msgs,
+		bson.M{"channelid": bson.M{"$eq": "0"}, "createdat": bson.M{"$gt": t}},
+		options.Find().SetLimit(50),
+		options.Find().SetSort(bson.M{"createdat": -1}),
+	)
+
+	if err != nil {
+		return nil, err
+	}
 
 	msgHistory := make([]*pb.Message, 0)
 
-	var result models.Message
-	for results.Next(&result) {
-		msgHistory = append(msgHistory, result.MarshalToPB())
+	for _, msg := range msgs {
+		msgHistory = append(msgHistory, msg.MarshalToPB())
 	}
+
 	history := &pb.MessageHistory{
 		Messages:         msgHistory,
 		NumberOfMessages: int64(len(msgHistory)),
 		Pages:            1,
 	}
 
-	println(len(msgHistory))
-	return history
+	return history, nil
 }
 
 type InvalidID struct {

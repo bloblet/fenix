@@ -7,11 +7,13 @@ require (
 	github.com/fatih/color v1.10.0
 	github.com/franela/goblin v0.0.0-20210113153425-413781f5e6c8
 	github.com/go-bongo/bongo v0.10.4
+	github.com/kamva/mgm/v3 v3.1.0
 	github.com/maxwellhealth/go-dotaccess v0.0.0-20190924013105-74ea4f4ca4eb // indirect
 	github.com/oleiade/reflections v1.0.1 // indirect
 	github.com/pborman/ansi v1.0.0
 	github.com/sirupsen/logrus v1.8.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
+	go.mongodb.org/mongo-driver v1.3.4
 	golang.org/x/net v0.0.0-20200822124328-c89045814202 // indirect
 	golang.org/x/sys v0.0.0-20201018121011-98379d014ca7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

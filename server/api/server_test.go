@@ -6,6 +6,7 @@ import (
 	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
+	"github.com/kamva/mgm/v3"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
@@ -136,13 +137,10 @@ func TestGRPCApi_HandleMessages(t *testing.T) {
 }
 
 func TestGRPCApi_GetMessageHistory(t *testing.T) {
-	api, _, m, _, ack := connectToMessages("testApiGetMessageHistory", t)
+	_, _, m, _, ack := connectToMessages("testApiGetMessageHistory", t)
 
 	// Populate Database
 	before := time.Now()
-
-	numberFinished := 0
-	done := make(chan bool)
 
 	for i := 0; i <= 50; i++ {
 		msg := &models.Message{
@@ -153,24 +151,16 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 		}
 		msg.SetupMessage()
 
-		go func() {
-			<-msg.Saved
-			numberFinished = numberFinished + 1
-			println(numberFinished)
-			if numberFinished == 50 {
-				done <- true
-			}
-		}()
+		err := mgm.Coll(msg).Create(msg)
 
-		err := api.msgDB.Conn.Collection("messages").Save(msg)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		// Make sure that it was written so no weird things happen
+		msg.WaitForSave()
 	}
 
-	<-done
-
-	print("Finished")
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
 	md := metadata.New(map[string]string{"session-token": ack.SessionToken})

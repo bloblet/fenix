@@ -131,7 +131,12 @@ func (api *GRPCApi) Login(ctx context.Context, in *pb.ClientAuth) (*pb.AuthAck, 
 
 func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
 	user := api.utilCheckSessionToken(ctx)
-	messageHistory := api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime())
+	messageHistory, err := api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime())
+
+	if err != nil {
+		utils.Log().Error(err)
+		return nil, err
+	}
 
 	p, _ := peer.FromContext(ctx)
 	utils.Log().WithFields(

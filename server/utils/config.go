@@ -20,7 +20,7 @@ type Logger struct {
 }
 
 type Database struct {
-	Host     string `yaml:"host"`
+	URI      string `yaml:"uri"`
 	Database string `yaml:"database"`
 }
 
@@ -60,7 +60,7 @@ func readConfig() {
 			},
 			Database: Database{
 				Database: "development",
-				Host:     "localhost",
+				URI:      "mongodb://localhost",
 			},
 			Logger: Logger{
 				LogLevel: "error",
