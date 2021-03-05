@@ -1,7 +1,7 @@
 # Database specific settings.
 database:
   # Location of mongodb server
-  host: localhost
+  uri: localhost
   # Database name for fenix to put collections in
   database: development
 
