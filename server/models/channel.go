@@ -1,4 +1,4 @@
-package database
+package models
 
 type Channel struct {
 	ChannelID string

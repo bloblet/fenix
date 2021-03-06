@@ -1,6 +1,8 @@
-package database
+package models
 
-import "time"
+import (
+	"time"
+)
 
 // Activity represents an activity a user is displaying on their profile
 type Activity struct {
