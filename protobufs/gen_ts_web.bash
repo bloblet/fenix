@@ -9,7 +9,6 @@ if [ -f "/usr/local/lib/node_modules/ts-protoc-gen/bin/protoc-gen-ts" ]; then
 		--plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
 		--ts_out="service=grpc-web:../ts_web/" \
 		--js_out="import_style=commonjs,binary:../ts_web/" \
-		auth.proto \
 		message.proto \
 		user.proto 
 else

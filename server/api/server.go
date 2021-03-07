@@ -2,51 +2,39 @@ package api
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	pb "github.com/bloblet/fenix/protobufs/go"
 	db "github.com/bloblet/fenix/server/databases"
+	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"net"
 	"strconv"
-	"time"
 )
 
 var config = utils.LoadConfig()
 var addr = config.API.Host + ":" + strconv.Itoa(config.API.Port)
 
-func generateToken(n int) (string, error) {
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-
-	return base64.URLEncoding.EncodeToString(b), err
-}
-
-type user struct {
-	ID       string
-	Username string
-	messages chan *pb.Message
-}
-
 type GRPCApi struct {
 	S        *grpc.Server
-	sessions map[string]user
 	msgDB    *db.MessageDB
-	pb.UnimplementedAuthServer
+	pb.UnimplementedUsersServer
 	pb.UnimplementedMessagesServer
+	authDB   *db.AuthenticationManager
+	httpApi  HTTPApi
+	connectedClients map[string]chan *pb.Message
 }
 
 func (api *GRPCApi) Prepare() {
 	api.S = grpc.NewServer()
 	api.msgDB = db.NewMessageDB()
-	api.sessions = make(map[string]user)
-	pb.RegisterAuthServer(api.S, api)
+	api.authDB = db.NewAuthenticationManager()
+	api.httpApi = HTTPApi{}
+	api.connectedClients = map[string]chan *pb.Message{}
+
+	pb.RegisterUsersServer(api.S, api)
 	pb.RegisterMessagesServer(api.S, api)
 }
 
@@ -59,6 +47,8 @@ func (api *GRPCApi) Bufconn() *bufconn.Listener {
 }
 
 func (api *GRPCApi) Listen(lis net.Listener) {
+
+	go api.httpApi.Serve(&lis)
 	if err := api.S.Serve(lis); err != nil {
 		utils.Log().WithFields(
 			log.Fields{
@@ -84,53 +74,185 @@ func (api *GRPCApi) Serve() {
 	api.Listen(lis)
 }
 
-// utilCheckSessionToken is a helper function that can validate and identify a request.
-// If clients have more than one session-token, fenix only uses the first one.
-func (api *GRPCApi) utilCheckSessionToken(ctx context.Context) user {
-	md, _ := metadata.FromIncomingContext(ctx)
-	token := md.Get("session-token")[0]
-	return api.sessions[token]
+func (api *GRPCApi) authenticate(a *pb.AuthMethod) (*models.User, bool) {
+	return api.authDB.TokenAuthenticateUser(
+		a.GetUserID(),
+		a.Token.GetToken(),
+		a.Token.GetTokenID(),
+	)
 }
 
-// gRPC doesn't have any way of identifying clients, other than client metadata.
-// To avoid cluttering all the protobuf requests with token parameters, and to avoid messy bidirectional stream workarounds,
-// Fenix uses session tokens in metadata.  Clients are expected to log in and then keep that session token in metadata, and renew
-// when it expires.  If anyone has a better solution, open an issue.
-func (api *GRPCApi) Login(ctx context.Context, in *pb.ClientAuth) (*pb.AuthAck, error) {
-	sessionToken, err := generateToken(16)
+func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Token, error) {
+	_, ok := api.authDB.GetUser(in.UserID)
+
+	if !ok {
+		return nil, UserDoesNotExistError{}
+	}
+
+	authenticated := false
+	var u *models.User
+
+	if in.Token != nil {
+		u, authenticated = api.authenticate(in)
+
+		if authenticated {
+			err := api.authDB.DeleteToken(u, in.Token.GetTokenID())
+			if err != nil {
+				return nil, err
+			}
+		}
+
+	} else if in.Password != nil {
+		u, authenticated = api.authDB.PasswordAuthenticateUser(
+			in.Password.GetEmail(),
+			in.Password.GetPassword(),
+		)
+	} else {
+		return nil, InvalidRequest{}
+	}
+
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+
+	token, err := api.authDB.CreateToken()
 	if err != nil {
 		return nil, err
 	}
-	user := user{}
-	user.messages = make(chan *pb.Message)
-	user.Username = in.GetUsername()
 
-	api.sessions[sessionToken] = user
+	err = api.authDB.AddToken(u, token)
+	if err != nil {
+		return nil, err
+	}
 
-	go func() {
-		timer := time.NewTimer(5 * time.Minute)
-		<-timer.C
-		delete(api.sessions, sessionToken)
-	}()
-	p, _ := peer.FromContext(ctx)
+	return token.MarshalToPB(), nil
+}
 
-	utils.Log().WithFields(
-		log.Fields{
-			"userID":   user.ID,
-			"username": user.Username,
-			"ip":       p.Addr,
-		},
-	).Trace("login")
+func (api *GRPCApi) GetUser(_ context.Context, in *pb.RequestUser) (*pb.User, error) {
+	if _, a := api.authenticate(in.GetAuthentication()); !a {
+		return nil, NotAuthorized{}
+	}
 
-	return &pb.AuthAck{
-		Username:     user.Username,
-		SessionToken: sessionToken,
-		Expiry:       timestamppb.New(time.Now().Add(5 * time.Minute)),
+	u, ok := api.authDB.GetUser(in.GetUserID())
+	if !ok {
+		return nil, UserDoesNotExistError{}
+	}
+	return u.MarshalToPB(), nil
+}
+
+func (api *GRPCApi) CreateUser(_ context.Context, in *pb.RequestUserCreation) (*pb.UserCreated, error) {
+	u, err := api.authDB.NewUser(in.GetEmail(), in.GetUsername(), in.GetPassword())
+
+	if err != nil {
+		return nil, err
+	}
+
+	var uc *pb.UserCreated
+	for s, _ := range u.Tokens {
+		uc = u.MarshalToUserCreated(s)
+	}
+	return uc, nil
+}
+
+func (api *GRPCApi) WaitForEmailVerification(in *pb.AuthMethod, s pb.Users_WaitForEmailVerificationServer) error {
+	u, authenticated := api.authenticate(in)
+	if !authenticated {
+		return NotAuthorized{}
+	}
+
+	if u.EmailVerified == true {
+		return s.Send(&pb.Success{})
+	}
+
+	if _, ok := api.authDB.VerificationListeners[u.ID.Hex()]; ok {
+		return InvalidRequest{}
+	}
+
+	api.authDB.VerificationListeners[u.ID.Hex()] = make(chan bool, 1)
+	<-api.authDB.VerificationListeners[u.ID.Hex()]
+	return s.Send(&pb.Success{})
+}
+
+func (api *GRPCApi) ResendEmailVerification(_ context.Context, in *pb.AuthMethod) (*pb.Success, error) {
+	u, authenticated := api.authenticate(in)
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+
+	err := api.authDB.SendVerificationEmail(u)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Success{}, nil
+}
+
+func (api *GRPCApi) ChangeMFA(_ context.Context, in *pb.MFAStatus) (*pb.Success, error) {
+	u, authenticated := api.authenticate(in.GetAuthentication())
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+
+	err := api.authDB.ChangeMFA(u, in.GetStatus())
+	if err != nil {
+		return nil, err
+	}
+	return &pb.Success{}, nil
+}
+
+func (api *GRPCApi) GetMFALink(_ context.Context, in *pb.RequestMFALink) (*pb.MFALink, error) {
+	u, authenticated := api.authenticate(in.GetAuthentication())
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+
+	l, err := api.authDB.Generate2FALink(u)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.MFALink{Link: l}, nil
+}
+
+func (api *GRPCApi) ChangeUsername(_ context.Context, in *pb.ChangeUsernameRequest) (*pb.User, error) {
+	u, authenticated := api.authenticate(in.GetAuthentication())
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+	err := api.authDB.ChangeUsername(u, in.GetUsername())
+	if err != nil {
+		return nil, err
+	}
+	return u.MarshalToPB(), nil
+}
+
+func (api *GRPCApi) ChangePassword(_ context.Context, in *pb.ChangePasswordRequest) (*pb.UserCreated, error) {
+	u, authenticated := api.authDB.PasswordAuthenticateUser(
+		in.GetAuthentication().GetEmail(),
+		in.GetAuthentication().GetPassword(),
+	)
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+
+	t, err := api.authDB.ChangePassword(u, in.GetPassword())
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.UserCreated{
+		User: u.MarshalToPB(),
+		Token: t.MarshalToPB(),
 	}, nil
 }
 
 func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
-	user := api.utilCheckSessionToken(ctx)
+	user, authenticated := api.authenticate(history.GetAuthentication())
+
+	if !authenticated {
+		return nil, NotAuthorized{}
+	}
+
 	messageHistory, err := api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime())
 
 	if err != nil {
@@ -152,22 +274,26 @@ func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMes
 }
 
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
-	ctx := stream.Context()
-
-	user := api.utilCheckSessionToken(ctx)
-
-	if user.Username == "" {
-		return InvalidUsername{}
+	m, err := stream.Recv()
+	if err != nil {
+		return err
 	}
+	user, authenticated := api.authenticate(m.GetAuthentication())
+
+	if !authenticated {
+		return NotAuthorized{}
+	}
+
+	api.connectedClients[user.ID.Hex()] = make(chan *pb.Message, 1)
 
 	// Pass any sent messages to the client
 	go func() {
 		for true {
-			_ = stream.Send(<-user.messages)
+			_ = stream.Send(<-api.connectedClients[user.ID.Hex()])
 		}
 	}()
 
-	p, _ := peer.FromContext(ctx)
+	p, _ := peer.FromContext(stream.Context())
 
 	utils.Log().WithFields(
 		log.Fields{
@@ -202,8 +328,8 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 }
 
 func (api *GRPCApi) notifyClientsOfMessage(message *pb.Message) {
-	for _, val := range api.sessions {
-		val.messages <- message
+	for _, c := range api.connectedClients {
+		c <- message
 	}
 }
 
@@ -217,4 +343,28 @@ type ConnectionClosed struct{}
 
 func (e ConnectionClosed) Error() string {
 	return "ConnectionClosed"
+}
+
+type UserDoesNotExistError struct {
+
+}
+
+func (e UserDoesNotExistError) Error() string {
+	return "UserDoesNotExist"
+}
+
+type InvalidRequest struct {
+
+}
+
+func (e InvalidRequest) Error() string {
+	return "InvalidRequest"
+}
+
+type NotAuthorized struct {
+
+}
+
+func (e NotAuthorized) Error() string {
+	return "NotAuthorized"
 }

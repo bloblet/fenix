@@ -71,7 +71,9 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string, sync ...b
 		CreatedAt: time.Now(),
 		ChannelID: "0",
 	}
-	msg.SetupMessage()
+
+	msg.New()
+
 
 	err := mgm.Coll(msg).Create(msg)
 

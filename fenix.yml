@@ -16,3 +16,10 @@ api:
 logger:
   # Min log level to print logs at (Defaults to error if omitted)
   loglevel: trace
+
+authenticator:
+  mailServer: smtp.gmail.com
+  mailServerPort: 587
+  mailServerUser: bloblet.dev@gmail.com
+  mailServerPassword: SksQ4Zx6d45&$O
+  verificationEndpoint: http://bloblet.com:4545/verify_email

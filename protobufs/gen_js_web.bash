@@ -11,6 +11,5 @@ cd proto
 protoc \
 	--js_out="import_style=commonjs,binary:../js_web/" \
 	--grpc-web_out="import_style=commonjs,mode=grpcwebtext:../js_web/" \
-	auth.proto \
 	message.proto \
 	user.proto 

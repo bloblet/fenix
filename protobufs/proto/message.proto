@@ -5,9 +5,11 @@ option go_package = "go";
 
 
 import "google/protobuf/timestamp.proto";
+import "user.proto";
 
 message CreateMessage {
-	string Content = 1;
+	AuthMethod Authentication = 1;
+	string Content = 2;
 }
 
 message Message {
@@ -29,9 +31,8 @@ message MessageHistory {
 }
 
 message RequestMessageHistory {
-	// string ChannelID = 1;
+	AuthMethod Authentication = 1;
 	google.protobuf.Timestamp LastMessageTime = 2;
-	reserved 1;
 }
 
 service Messages {

@@ -149,7 +149,7 @@ func TestGRPCApi_GetMessageHistory(t *testing.T) {
 			CreatedAt: time.Now(),
 			ChannelID: "0",
 		}
-		msg.SetupMessage()
+		msg.New()
 
 		err := mgm.Coll(msg).Create(msg)
 

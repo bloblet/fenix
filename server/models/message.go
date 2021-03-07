@@ -8,16 +8,12 @@ import (
 )
 
 type Message struct {
-	onSave           chan bool `bson:"-"`
+	SyncModel `bson:",inline"`
 	mgm.DefaultModel `bson:",inline"`
 	UserID           string
 	CreatedAt        time.Time
 	ChannelID        string
 	Content          string
-}
-
-func (m *Message) SetupMessage() {
-	m.onSave = make(chan bool, 1)
 }
 
 func (m *Message) MarshalToPB() *pb.Message {
@@ -27,15 +23,6 @@ func (m *Message) MarshalToPB() *pb.Message {
 	message.MessageID = m.ID.Hex()
 	message.SentAt = timestamppb.New(m.CreatedAt)
 	return &message
-}
-
-func (m *Message) Saved() error {
-	m.onSave <- true
-	return nil
-}
-
-func (m *Message) WaitForSave() {
-	<-m.onSave
 }
 
 func (m *Message) CollectionName() string {

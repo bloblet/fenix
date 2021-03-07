@@ -24,6 +24,14 @@ type Database struct {
 	Database string `yaml:"database"`
 }
 
+type Authenticator struct {
+	MailServer string `yaml:"mailServer"`
+	MailServerPort int `yaml:"mailServerPort"`
+	MailServerUser string `yaml:"mailServerUser"`
+	MailServerPassword string `yaml:"mailServerPassword"`
+	VerificationEndpoint string `yaml:"verificationEndpoint"`
+}
+
 type Config struct {
 
 	// API specific settings
@@ -33,6 +41,9 @@ type Config struct {
 
 	// Database specific settings
 	Database Database `yaml:"database"`
+
+	// Authenticator specific settings
+	Authenticator Authenticator `yaml:"authenticator`
 }
 
 func LoadConfig() *Config {
@@ -65,6 +76,7 @@ func readConfig() {
 			Logger: Logger{
 				LogLevel: "error",
 			},
+			Authenticator: Authenticator{},
 		}
 		return
 	}

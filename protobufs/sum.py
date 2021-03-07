@@ -11,8 +11,6 @@ BUF_SIZE = 4194304
 # Languages and extensions to check.
 languages = {
     'go': ['.pb.go', '_grpc.pb.go'],
-    'js_web': ['_pb.js', '_grpc_web_pb.js'],
-    'ts_web': ['_pb.d.ts', '_pb_service.d.ts']
 }
 
 # Ensure we are in the protobuf folder
