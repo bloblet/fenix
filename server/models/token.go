@@ -7,10 +7,11 @@ import (
 )
 
 type Token struct {
-	Token string
+	Token   string
 	Expires time.Time
 	TokenID string
 }
+
 func (t *Token) MarshalToPB() *pb.Token {
 	p := pb.Token{}
 	p.Token = t.Token

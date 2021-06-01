@@ -8,7 +8,7 @@ import (
 )
 
 type Message struct {
-	SyncModel `bson:",inline"`
+	SyncModel        `bson:",inline"`
 	mgm.DefaultModel `bson:",inline"`
 	UserID           string
 	CreatedAt        time.Time

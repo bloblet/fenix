@@ -7,18 +7,18 @@ import (
 
 // User is the current datatype for fenix users.
 type User struct {
-	SyncModel `bson:",inline"`
+	SyncModel        `bson:",inline"`
 	mgm.DefaultModel `bson:",inline"`
-	AuthSecret    string
-	Tokens        map[string]Token
-	Email         string
-	Salt          []byte `json:"-"`
-	Password      []byte `json:"-"`
-	OTT           string
-	EmailVerified bool
-	Username      string
-	Discriminator string
-	MFAEnabled    bool
+	AuthSecret       string
+	Tokens           map[string]Token
+	Email            string
+	Salt             []byte `json:"-"`
+	Password         []byte `json:"-"`
+	OTT              string
+	EmailVerified    bool
+	Username         string
+	Discriminator    string
+	MFAEnabled       bool
 }
 
 func (u *User) MarshalToPB() *pb.User {

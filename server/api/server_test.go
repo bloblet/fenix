@@ -31,17 +31,21 @@ func startBufconn() (*GRPCApi, *bufconn.Listener) {
 	return &grpcAPI, grpcAPI.Bufconn()
 }
 
-func login(username string, t *testing.T) (*GRPCApi, *client.Client, *pb.AuthClient, *pb.AuthAck) {
+func login(username string, t *testing.T) (*GRPCApi, *client.Client, *pb.UsersClient, *pb.Token) {
 	api, conn := startBufconn()
 	cli := client.Client{}
 	cli.BuffConnect("testApiLogin", conn, false)
 
-	a := pb.NewAuthClient(cli.Conn)
+	a := pb.NewUsersClient(cli.Conn)
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*4)
 
-	clientAuth := pb.ClientAuth{
-		Username: "testApiLogin",
+	clientAuth := pb.AuthMethod{
+		UserID: "test",
+		Password: &pb.Password{
+			Email: "test@test.com",
+			Password: "test",
+		},
 	}
 
 	ack, err := a.Login(ctx, &clientAuth)

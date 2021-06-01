@@ -18,12 +18,12 @@ var config = utils.LoadConfig()
 var addr = config.API.Host + ":" + strconv.Itoa(config.API.Port)
 
 type GRPCApi struct {
-	S        *grpc.Server
-	msgDB    *db.MessageDB
+	S     *grpc.Server
+	msgDB *db.MessageDB
 	pb.UnimplementedUsersServer
 	pb.UnimplementedMessagesServer
-	authDB   *db.AuthenticationManager
-	httpApi  HTTPApi
+	authDB           *db.AuthenticationManager
+	httpApi          HTTPApi
 	connectedClients map[string]chan *pb.Message
 }
 
@@ -48,7 +48,7 @@ func (api *GRPCApi) Bufconn() *bufconn.Listener {
 
 func (api *GRPCApi) Listen(lis net.Listener) {
 
-	go api.httpApi.Serve(&lis)
+	go api.httpApi.ServeHTTP()
 	if err := api.S.Serve(lis); err != nil {
 		utils.Log().WithFields(
 			log.Fields{
@@ -61,7 +61,7 @@ func (api *GRPCApi) Listen(lis net.Listener) {
 
 func (api *GRPCApi) Serve() {
 	api.Prepare()
-	utils.Log().Infof("Serving on %v", addr)
+	utils.Log().Infof("Serving GRPC on %v", addr)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
 		utils.Log().WithFields(
@@ -241,7 +241,7 @@ func (api *GRPCApi) ChangePassword(_ context.Context, in *pb.ChangePasswordReque
 	}
 
 	return &pb.UserCreated{
-		User: u.MarshalToPB(),
+		User:  u.MarshalToPB(),
 		Token: t.MarshalToPB(),
 	}, nil
 }
@@ -346,7 +346,6 @@ func (e ConnectionClosed) Error() string {
 }
 
 type UserDoesNotExistError struct {
-
 }
 
 func (e UserDoesNotExistError) Error() string {
@@ -354,7 +353,6 @@ func (e UserDoesNotExistError) Error() string {
 }
 
 type InvalidRequest struct {
-
 }
 
 func (e InvalidRequest) Error() string {
@@ -362,7 +360,6 @@ func (e InvalidRequest) Error() string {
 }
 
 type NotAuthorized struct {
-
 }
 
 func (e NotAuthorized) Error() string {

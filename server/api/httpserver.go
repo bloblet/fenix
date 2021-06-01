@@ -2,9 +2,8 @@ package api
 
 import (
 	"github.com/bloblet/fenix/server/databases"
+	"github.com/bloblet/fenix/server/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/render"
-	"net"
 	"net/http"
 )
 
@@ -12,15 +11,17 @@ type HTTPApi struct {
 	authdb databases.AuthenticationManager
 }
 
-func (api *HTTPApi) Serve(l *net.Listener) {
-	r := gin.Default()
-	r.GET("/verify_email", api.verifyEmail)
+func (api *HTTPApi) ServeHTTP() {
+	gin.SetMode(gin.ReleaseMode)
 
-	r.RunListener(*l)
+	r := gin.New()
+	r.GET("/verify_email", api.verifyEmail)
+	utils.Log().Infof("Serving HTTP on %v", config.API.HTTPHost)
+	r.Run(config.API.HTTPHost)
 }
 
 func (api *HTTPApi) verifyEmail(c *gin.Context) {
-	userID, _ := c.GetQuery("id")
+	userID, _ := c.GetQuery("u")
 	ott, _ := c.GetQuery("t")
 
 	if userID == "" || ott == "" {
@@ -29,9 +30,10 @@ func (api *HTTPApi) verifyEmail(c *gin.Context) {
 
 	ok := api.authdb.Verify(ott, userID)
 	if ok {
-		c.Render(200, render.String{Data: []interface{}{"OK"}})
+		c.String(http.StatusOK, "ok")
+
 	} else {
-		c.Render(404, render.String{Data: []interface{}{"Error"}})
+		c.String(http.StatusBadRequest, "bad")
 	}
 
 }

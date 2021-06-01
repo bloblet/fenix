@@ -74,7 +74,6 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string, sync ...b
 
 	msg.New()
 
-
 	err := mgm.Coll(msg).Create(msg)
 
 	if err != nil {

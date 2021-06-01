@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
@@ -34,11 +35,12 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 func NewAuthenticationManager() *AuthenticationManager {
 	a := &AuthenticationManager{}
 	a.VerificationListeners = map[string]chan bool{}
+	a.LastVerificationEmailSentAt = map[string]time.Time{}
 	return a
 }
 
 type AuthenticationManager struct {
-	VerificationListeners map[string]chan bool
+	VerificationListeners       map[string]chan bool
 	LastVerificationEmailSentAt map[string]time.Time
 }
 
@@ -66,17 +68,17 @@ func (a *AuthenticationManager) NewUser(email, username, password string, sync .
 		_sync = sync[0]
 	}
 
-	salt, err := GenerateRandomBytes(16)
+	salt, err := GenerateRandomBytes(32)
 	if err != nil {
 		return nil, err
 	}
 
-	ott, err := GenerateRandomBytes(16)
+	ott, err := GenerateRandomBytes(32)
 	if err != nil {
 		return nil, err
 	}
 
-	mfaSecret, err := GenerateRandomBytes(16)
+	mfaSecret, err := GenerateRandomBytes(32)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +88,6 @@ func (a *AuthenticationManager) NewUser(email, username, password string, sync .
 		return nil, err
 	}
 
-
 	u := &models.User{
 		Tokens: map[string]models.Token{
 			t.TokenID: *t,
@@ -94,12 +95,12 @@ func (a *AuthenticationManager) NewUser(email, username, password string, sync .
 		Email:         email,
 		Salt:          salt,
 		Password:      a.hashPassword([]byte(password), salt),
-		OTT:           string(ott),
+		OTT:           base64.URLEncoding.EncodeToString(ott),
 		EmailVerified: false,
 		Username:      username,
 		Discriminator: fmt.Sprint(mrand.Intn(9999)),
 		MFAEnabled:    true,
-		AuthSecret:    string(mfaSecret),
+		AuthSecret:    base64.URLEncoding.EncodeToString(mfaSecret),
 	}
 
 	u.New()
@@ -112,6 +113,12 @@ func (a *AuthenticationManager) NewUser(email, username, password string, sync .
 	if err != nil {
 		return nil, err
 	}
+
+	err = a.SendVerificationEmail(u)
+	if err != nil {
+		return nil, err
+	}
+
 	return u, nil
 }
 
@@ -179,7 +186,7 @@ func (a *AuthenticationManager) TokenAuthenticateUser(userID, token, tokenID str
 }
 
 func (a *AuthenticationManager) SendVerificationEmail(u *models.User) error {
-	if t := a.LastVerificationEmailSentAt[u.ID.Hex()]; t.Before(time.Now().Add(time.Minute)) {
+	if t, ok := a.LastVerificationEmailSentAt[u.ID.Hex()]; ok && t.Before(time.Now().Add(time.Minute)) {
 		return VerificationEmailCooldown{}
 	}
 
@@ -222,6 +229,10 @@ func (a *AuthenticationManager) Verify(ott, userID string) bool {
 		return false
 	}
 
+	if u.EmailVerified {
+		return true
+	}
+
 	if u.OTT == "" {
 		return false
 	}
@@ -230,20 +241,37 @@ func (a *AuthenticationManager) Verify(ott, userID string) bool {
 
 	if res == 1 {
 		u.EmailVerified = true
-		err := mgm.Coll(u).Update(u)
-		if err != nil {
+		res, err := mgm.Coll(u).UpdateOne(
+			mgm.Ctx(),
+			bson.M{
+				"_id": bson.M{
+					operator.Eq: u.ID,
+				},
+			},
+			bson.M{
+				"$set": bson.M{
+					"emailverified": true,
+				},
+			},
+		)
+
+		if err != nil || res.MatchedCount != 1 {
 			utils.Log().WithFields(
 				log.Fields{
 					"Provided OTT": ott,
 					"Provided UID": userID,
-					"User OTT": u.OTT,
-					"UserID": u.ID.Hex(),
-					"error": err,
+					"User OTT":     u.OTT,
+					"UserID":       u.ID.Hex(),
+					"error":        err,
 				},
 			).Error("Error updating user")
 		}
 
-		a.VerificationListeners[u.ID.Hex()] <- true
+		c, ok := a.VerificationListeners[u.ID.Hex()]
+		if ok {
+			c <- true
+		}
+
 		delete(a.LastVerificationEmailSentAt, u.ID.Hex())
 	}
 
@@ -266,7 +294,7 @@ func (a *AuthenticationManager) DeleteToken(u *models.User, tokenID string) erro
 }
 
 func (a *AuthenticationManager) CreateToken() (*models.Token, error) {
-	token, err := GenerateRandomBytes(16)
+	token, err := GenerateRandomBytes(32)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +305,7 @@ func (a *AuthenticationManager) CreateToken() (*models.Token, error) {
 	}
 
 	t := &models.Token{
-		Token: string(token),
+		Token:  base64.URLEncoding.EncodeToString(token),
 		Expires: time.Now().Add(time.Hour * 24 * 7),
 		TokenID: tokenID.String(),
 	}
@@ -321,11 +349,14 @@ func (a *AuthenticationManager) ChangePassword(u *models.User, newPassword strin
 
 type UserExistsError struct {
 }
+
 func (e UserExistsError) Error() string {
 	return "UserExists"
 }
+
 type VerificationEmailCooldown struct {
 }
+
 func (e VerificationEmailCooldown) Error() string {
 	return "VerificationEmailCooldown"
 }

@@ -11,6 +11,7 @@ api:
   host: 0.0.0.0
   # Port to listen on
   port: 4545
+  httpHost: 0.0.0.0:4546
 
 # Logger specific settings
 logger:
@@ -22,4 +23,4 @@ authenticator:
   mailServerPort: 587
   mailServerUser: bloblet.dev@gmail.com
   mailServerPassword: SksQ4Zx6d45&$O
-  verificationEndpoint: http://bloblet.com:4545/verify_email
+  verificationEndpoint: http://bloblet.com:4546/verify_email

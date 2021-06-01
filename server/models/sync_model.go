@@ -1,7 +1,7 @@
 package models
 
 type SyncModel struct {
-	onSave           chan bool `bson:"-"`
+	onSave chan bool `bson:"-"`
 }
 
 func (s *SyncModel) Saved() error {

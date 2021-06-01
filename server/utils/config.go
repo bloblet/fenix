@@ -13,6 +13,7 @@ var config *Config
 type API struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
+	HTTPHost string `yaml:"httpHost"`
 }
 
 type Logger struct {
@@ -25,10 +26,10 @@ type Database struct {
 }
 
 type Authenticator struct {
-	MailServer string `yaml:"mailServer"`
-	MailServerPort int `yaml:"mailServerPort"`
-	MailServerUser string `yaml:"mailServerUser"`
-	MailServerPassword string `yaml:"mailServerPassword"`
+	MailServer           string `yaml:"mailServer"`
+	MailServerPort       int    `yaml:"mailServerPort"`
+	MailServerUser       string `yaml:"mailServerUser"`
+	MailServerPassword   string `yaml:"mailServerPassword"`
 	VerificationEndpoint string `yaml:"verificationEndpoint"`
 }
 
@@ -68,6 +69,7 @@ func readConfig() {
 			API: API{
 				Host: "localhost",
 				Port: 4545,
+				HTTPHost: "localhost:4546",
 			},
 			Database: Database{
 				Database: "development",
