@@ -15,13 +15,13 @@ message CreateMessage {
 message Message {
 	string MessageID = 1;
 	string UserID = 2;
-	string ChannelID = 3;
+//	string ChannelID = 3;
 	// string ServerID = 4;
 	// repeated string Comments = 5;
 	// repeated string Reactions = 6;
 	google.protobuf.Timestamp SentAt = 7;
 	string Content = 8;
-	reserved 4 to 6, 9;
+	reserved 3 to 6, 9;
 }
 
 message MessageHistory {

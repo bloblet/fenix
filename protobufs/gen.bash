@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!bash
 
 ./gen_go.bash 
