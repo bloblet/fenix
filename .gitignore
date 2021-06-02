@@ -9,3 +9,5 @@ main
 .cassandraWorkbench/
 *.log
 fenix.yml
+
+*.DS_Store
