@@ -11,6 +11,7 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // MessagesClient is the client API for Messages service.
@@ -30,7 +31,7 @@ func NewMessagesClient(cc grpc.ClientConnInterface) MessagesClient {
 }
 
 func (c *messagesClient) HandleMessages(ctx context.Context, opts ...grpc.CallOption) (Messages_HandleMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Messages_serviceDesc.Streams[0], "/Messages/HandleMessages", opts...)
+	stream, err := c.cc.NewStream(ctx, &Messages_ServiceDesc.Streams[0], "/Messages/HandleMessages", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ type UnsafeMessagesServer interface {
 }
 
 func RegisterMessagesServer(s grpc.ServiceRegistrar, srv MessagesServer) {
-	s.RegisterService(&_Messages_serviceDesc, srv)
+	s.RegisterService(&Messages_ServiceDesc, srv)
 }
 
 func _Messages_HandleMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -145,7 +146,10 @@ func _Messages_GetMessageHistory_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Messages_serviceDesc = grpc.ServiceDesc{
+// Messages_ServiceDesc is the grpc.ServiceDesc for Messages service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Messages_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Messages",
 	HandlerType: (*MessagesServer)(nil),
 	Methods: []grpc.MethodDesc{

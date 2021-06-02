@@ -28,6 +28,7 @@ type GRPCApi struct {
 }
 
 func (api *GRPCApi) Prepare() {
+	utils.Log().Trace("")
 	api.S = grpc.NewServer()
 	api.msgDB = db.NewMessageDB()
 	api.authDB = db.NewAuthenticationManager()
@@ -47,7 +48,7 @@ func (api *GRPCApi) Bufconn() *bufconn.Listener {
 }
 
 func (api *GRPCApi) Listen(lis net.Listener) {
-
+	utils.Log().Trace("")
 	go api.httpApi.ServeHTTP()
 	if err := api.S.Serve(lis); err != nil {
 		utils.Log().WithFields(
@@ -60,6 +61,7 @@ func (api *GRPCApi) Listen(lis net.Listener) {
 }
 
 func (api *GRPCApi) Serve() {
+	utils.Log().Trace("")
 	api.Prepare()
 	utils.Log().Infof("Serving GRPC on %v", addr)
 	lis, err := net.Listen("tcp", addr)
@@ -75,24 +77,25 @@ func (api *GRPCApi) Serve() {
 }
 
 func (api *GRPCApi) authenticate(a *pb.AuthMethod) (*models.User, bool) {
-	return api.authDB.TokenAuthenticateUser(
-		a.GetUserID(),
-		a.Token.GetToken(),
-		a.Token.GetTokenID(),
-	)
+	utils.Log().Trace("")
+
+	return api.authDB.AuthenticateUser(a)
 }
 
-func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Token, error) {
-	_, ok := api.authDB.GetUser(in.UserID)
+func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.AuthMethod, error) {
+	utils.Log().Trace("")
+	_, okid := api.authDB.GetUser(in.UserID)
+	_, okem := api.authDB.GetUserByEmail(in.Password.Email)
 
-	if !ok {
+	if !okid && !okem {
 		return nil, UserDoesNotExistError{}
 	}
 
 	authenticated := false
 	var u *models.User
 
-	if in.Token != nil {
+	if okid {
+
 		u, authenticated = api.authenticate(in)
 
 		if authenticated {
@@ -100,9 +103,10 @@ func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Toke
 			if err != nil {
 				return nil, err
 			}
+
 		}
 
-	} else if in.Password != nil {
+	} else if okem {
 		u, authenticated = api.authDB.PasswordAuthenticateUser(
 			in.Password.GetEmail(),
 			in.Password.GetPassword(),
@@ -125,10 +129,14 @@ func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Toke
 		return nil, err
 	}
 
-	return token.MarshalToPB(), nil
+	return &pb.AuthMethod{
+		Token: token.MarshalToPB(),
+		UserID: u.ID.String(),
+	}, nil
 }
 
 func (api *GRPCApi) GetUser(_ context.Context, in *pb.RequestUser) (*pb.User, error) {
+	utils.Log().Trace("")
 	if _, a := api.authenticate(in.GetAuthentication()); !a {
 		return nil, NotAuthorized{}
 	}
@@ -141,7 +149,10 @@ func (api *GRPCApi) GetUser(_ context.Context, in *pb.RequestUser) (*pb.User, er
 }
 
 func (api *GRPCApi) CreateUser(_ context.Context, in *pb.RequestUserCreation) (*pb.UserCreated, error) {
+	utils.Log().Trace("")
+
 	u, err := api.authDB.NewUser(in.GetEmail(), in.GetUsername(), in.GetPassword())
+	utils.Log().Trace(err)
 
 	if err != nil {
 		return nil, err
@@ -151,10 +162,12 @@ func (api *GRPCApi) CreateUser(_ context.Context, in *pb.RequestUserCreation) (*
 	for s, _ := range u.Tokens {
 		uc = u.MarshalToUserCreated(s)
 	}
+
 	return uc, nil
 }
 
 func (api *GRPCApi) WaitForEmailVerification(in *pb.AuthMethod, s pb.Users_WaitForEmailVerificationServer) error {
+	utils.Log().Trace("")
 	u, authenticated := api.authenticate(in)
 	if !authenticated {
 		return NotAuthorized{}
@@ -174,6 +187,7 @@ func (api *GRPCApi) WaitForEmailVerification(in *pb.AuthMethod, s pb.Users_WaitF
 }
 
 func (api *GRPCApi) ResendEmailVerification(_ context.Context, in *pb.AuthMethod) (*pb.Success, error) {
+	utils.Log().Trace("")
 	u, authenticated := api.authenticate(in)
 	if !authenticated {
 		return nil, NotAuthorized{}
@@ -188,6 +202,7 @@ func (api *GRPCApi) ResendEmailVerification(_ context.Context, in *pb.AuthMethod
 }
 
 func (api *GRPCApi) ChangeMFA(_ context.Context, in *pb.MFAStatus) (*pb.Success, error) {
+	utils.Log().Trace("")
 	u, authenticated := api.authenticate(in.GetAuthentication())
 	if !authenticated {
 		return nil, NotAuthorized{}
@@ -201,6 +216,7 @@ func (api *GRPCApi) ChangeMFA(_ context.Context, in *pb.MFAStatus) (*pb.Success,
 }
 
 func (api *GRPCApi) GetMFALink(_ context.Context, in *pb.RequestMFALink) (*pb.MFALink, error) {
+	utils.Log().Trace("")
 	u, authenticated := api.authenticate(in.GetAuthentication())
 	if !authenticated {
 		return nil, NotAuthorized{}
@@ -215,6 +231,7 @@ func (api *GRPCApi) GetMFALink(_ context.Context, in *pb.RequestMFALink) (*pb.MF
 }
 
 func (api *GRPCApi) ChangeUsername(_ context.Context, in *pb.ChangeUsernameRequest) (*pb.User, error) {
+	utils.Log().Trace("")
 	u, authenticated := api.authenticate(in.GetAuthentication())
 	if !authenticated {
 		return nil, NotAuthorized{}
@@ -227,6 +244,7 @@ func (api *GRPCApi) ChangeUsername(_ context.Context, in *pb.ChangeUsernameReque
 }
 
 func (api *GRPCApi) ChangePassword(_ context.Context, in *pb.ChangePasswordRequest) (*pb.UserCreated, error) {
+	utils.Log().Trace("")
 	u, authenticated := api.authDB.PasswordAuthenticateUser(
 		in.GetAuthentication().GetEmail(),
 		in.GetAuthentication().GetPassword(),
@@ -247,6 +265,7 @@ func (api *GRPCApi) ChangePassword(_ context.Context, in *pb.ChangePasswordReque
 }
 
 func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
+	utils.Log().Trace("")
 	user, authenticated := api.authenticate(history.GetAuthentication())
 
 	if !authenticated {
@@ -274,6 +293,7 @@ func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMes
 }
 
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
+	utils.Log().Trace("")
 	m, err := stream.Recv()
 	if err != nil {
 		return err

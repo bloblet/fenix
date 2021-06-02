@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	pb "github.com/bloblet/fenix/protobufs/go"
 	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
 	"github.com/google/uuid"
@@ -53,19 +54,22 @@ func (a *AuthenticationManager) checkPassword(rawPassword, hashedPassword, salt 
 	return res == 1
 }
 
-func (a *AuthenticationManager) NewUser(email, username, password string, sync ...bool) (*models.User, error) {
+func (a *AuthenticationManager) AuthenticateUser(am *pb.AuthMethod) (*models.User, bool) {
+	if am.GetUserID() != "" {
+		if _, ok := a.GetUser(am.GetUserID()); ok {
+			return a.TokenAuthenticateUser(am.GetUserID(), am.GetToken().GetToken(), am.GetToken().GetTokenID())
+		}
+	}
+	return a.PasswordAuthenticateUser(am.GetPassword().GetEmail(), am.GetPassword().GetPassword())
+}
+
+func (a *AuthenticationManager) NewUser(email, username, password string) (*models.User, error) {
 	res := mgm.Coll(&models.User{}).FindOne(mgm.Ctx(), bson.M{
 		"email": bson.M{operator.Eq: email},
 	})
 
 	if res.Err() == nil {
 		return nil, UserExistsError{}
-	}
-
-	_sync := false
-
-	if len(sync) != 0 {
-		_sync = sync[0]
 	}
 
 	salt, err := GenerateRandomBytes(32)
@@ -106,11 +110,8 @@ func (a *AuthenticationManager) NewUser(email, username, password string, sync .
 	u.New()
 	err = mgm.Coll(u).Create(u)
 
-	if _sync {
-		u.WaitForSave()
-	}
-
 	if err != nil {
+		utils.Log().Trace("\x1b[1;31mTHE DATABASE IS OFF\x1b[m")
 		return nil, err
 	}
 
@@ -133,7 +134,7 @@ func (a *AuthenticationManager) GetUser(userID string) (*models.User, bool) {
 	return u, true
 }
 
-func (a *AuthenticationManager) PasswordAuthenticateUser(email, password string) (*models.User, bool) {
+func (a *AuthenticationManager) GetUserByEmail(email string) (*models.User, bool) {
 	u := &models.User{}
 
 	res := mgm.Coll(u).FindOne(mgm.Ctx(), bson.M{
@@ -147,6 +148,15 @@ func (a *AuthenticationManager) PasswordAuthenticateUser(email, password string)
 	err := res.Decode(u)
 
 	if err != nil {
+		return nil, false
+	}
+
+	return u, true
+}
+
+func (a *AuthenticationManager) PasswordAuthenticateUser(email, password string) (*models.User, bool) {
+	u, ok := a.GetUserByEmail(email)
+	if !ok {
 		return nil, false
 	}
 
@@ -315,7 +325,21 @@ func (a *AuthenticationManager) CreateToken() (*models.Token, error) {
 
 func (a *AuthenticationManager) AddToken(u *models.User, t *models.Token) error {
 	u.Tokens[t.TokenID] = *t
-	return mgm.Coll(u).Update(u)
+
+	_, err := mgm.Coll(u).UpdateOne(
+		mgm.Ctx(),
+		bson.M{
+			"_id": bson.M{
+				operator.Eq: u.ID,
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				"tokens": u.Tokens,
+			},
+		},
+	)
+	return err
 }
 
 func (a *AuthenticationManager) ChangeMFA(u *models.User, status bool) error {

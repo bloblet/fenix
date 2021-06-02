@@ -11,13 +11,14 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
 // UsersClient is the client API for Users service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UsersClient interface {
-	RequestToken(ctx context.Context, in *AuthMethod, opts ...grpc.CallOption) (*Token, error)
+	RequestToken(ctx context.Context, in *AuthMethod, opts ...grpc.CallOption) (*AuthMethod, error)
 	GetUser(ctx context.Context, in *RequestUser, opts ...grpc.CallOption) (*User, error)
 	CreateUser(ctx context.Context, in *RequestUserCreation, opts ...grpc.CallOption) (*UserCreated, error)
 	WaitForEmailVerification(ctx context.Context, in *AuthMethod, opts ...grpc.CallOption) (Users_WaitForEmailVerificationClient, error)
@@ -36,8 +37,8 @@ func NewUsersClient(cc grpc.ClientConnInterface) UsersClient {
 	return &usersClient{cc}
 }
 
-func (c *usersClient) RequestToken(ctx context.Context, in *AuthMethod, opts ...grpc.CallOption) (*Token, error) {
-	out := new(Token)
+func (c *usersClient) RequestToken(ctx context.Context, in *AuthMethod, opts ...grpc.CallOption) (*AuthMethod, error) {
+	out := new(AuthMethod)
 	err := c.cc.Invoke(ctx, "/Users/RequestToken", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -64,7 +65,7 @@ func (c *usersClient) CreateUser(ctx context.Context, in *RequestUserCreation, o
 }
 
 func (c *usersClient) WaitForEmailVerification(ctx context.Context, in *AuthMethod, opts ...grpc.CallOption) (Users_WaitForEmailVerificationClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_Users_serviceDesc.Streams[0], "/Users/WaitForEmailVerification", opts...)
+	stream, err := c.cc.NewStream(ctx, &Users_ServiceDesc.Streams[0], "/Users/WaitForEmailVerification", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +145,7 @@ func (c *usersClient) ChangePassword(ctx context.Context, in *ChangePasswordRequ
 // All implementations must embed UnimplementedUsersServer
 // for forward compatibility
 type UsersServer interface {
-	RequestToken(context.Context, *AuthMethod) (*Token, error)
+	RequestToken(context.Context, *AuthMethod) (*AuthMethod, error)
 	GetUser(context.Context, *RequestUser) (*User, error)
 	CreateUser(context.Context, *RequestUserCreation) (*UserCreated, error)
 	WaitForEmailVerification(*AuthMethod, Users_WaitForEmailVerificationServer) error
@@ -160,7 +161,7 @@ type UsersServer interface {
 type UnimplementedUsersServer struct {
 }
 
-func (UnimplementedUsersServer) RequestToken(context.Context, *AuthMethod) (*Token, error) {
+func (UnimplementedUsersServer) RequestToken(context.Context, *AuthMethod) (*AuthMethod, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestToken not implemented")
 }
 func (UnimplementedUsersServer) GetUser(context.Context, *RequestUser) (*User, error) {
@@ -197,7 +198,7 @@ type UnsafeUsersServer interface {
 }
 
 func RegisterUsersServer(s grpc.ServiceRegistrar, srv UsersServer) {
-	s.RegisterService(&_Users_serviceDesc, srv)
+	s.RegisterService(&Users_ServiceDesc, srv)
 }
 
 func _Users_RequestToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -365,7 +366,10 @@ func _Users_ChangePassword_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-var _Users_serviceDesc = grpc.ServiceDesc{
+// Users_ServiceDesc is the grpc.ServiceDesc for Users service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Users_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Users",
 	HandlerType: (*UsersServer)(nil),
 	Methods: []grpc.MethodDesc{

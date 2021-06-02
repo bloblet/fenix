@@ -1,10 +1,9 @@
 syntax="proto3";
 
 // TODO: Fix
-option go_package = "go";
+option go_package = "./go";
 
 import "google/protobuf/timestamp.proto";
-import "protobufs/proto/user.proto";
 import "user.proto";
 
 message Channel {
@@ -124,10 +123,9 @@ message GetUsersRequest {
     string startingWith = 2;
 }
 
-message Users {
+message UserList {
     repeated User users = 1;
 }
-
 service Channels {
     rpc JoinChannel(JoinChannelRequest) returns (Channel) {}
     rpc CreateChannel(CreateChannelRequest) returns (Channel) {}
@@ -149,5 +147,5 @@ service Channels {
 
     rpc UpdateUserPrivs(UpdateUserPrivsRequest) returns (UserPrivs) {}
 
-    rpc GetUsers(GetUsersRequest) returns (Users) {}
+    rpc GetUsers(GetUsersRequest) returns (UserList) {}
 }
