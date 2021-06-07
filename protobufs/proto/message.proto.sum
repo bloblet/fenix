@@ -2,8 +2,8 @@
     "grpc_gen": {
         "go": "ac24170eea0a27611c87b758dbade4fce799ffcf"
     },
-    "proto": "787259a6038b7c0cf90f7d43cd6dc3705c41d379",
+    "proto": "7f33d50713d81489efc9aba55573f04500b3792e",
     "proto_gen": {
-        "go": "2b4bf3660e840ef12ebe2075aaf55a801ebdf023"
+        "go": "0285ae38c3ebb4abbda3df65044fcb1364bc30a7"
     }
 }

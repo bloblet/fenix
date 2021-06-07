@@ -19,7 +19,10 @@ type Message struct {
 func (m *Message) MarshalToPB() *pb.Message {
 	message := pb.Message{}
 	message.Content = m.Content
-	message.UserID = m.UserID
+	var u User
+	mgm.Coll(&User{}).FindByID(m.UserID, &u)
+
+	message.User = u.MarshalToPB()
 	message.MessageID = m.ID.Hex()
 	message.SentAt = timestamppb.New(m.CreatedAt)
 	return &message

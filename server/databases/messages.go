@@ -58,15 +58,9 @@ func (db *MessageDB) PurgeCache() {
 	}
 }
 
-func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string, sync ...bool) *pb.Message {
-	_sync := false
-
-	if len(sync) != 0 {
-		_sync = sync[0]
-	}
-
+func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, user *models.User) *pb.Message {
 	msg := &models.Message{
-		UserID:    userID,
+		UserID:    user.ID.Hex(),
 		Content:   cMsg.Content,
 		CreatedAt: time.Now(),
 		ChannelID: "0",
@@ -79,7 +73,7 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string, sync ...b
 	if err != nil {
 		utils.Log().WithFields(
 			log.Fields{
-				"userID":        userID,
+				"userID":        user.ID.Hex(),
 				"contentLength": len(msg.Content),
 				"createdAt":     msg.CreatedAt,
 				"channelID":     msg.ChannelID,
@@ -90,10 +84,6 @@ func (db *MessageDB) NewMessage(cMsg *pb.CreateMessage, userID string, sync ...b
 	}
 
 	m := msg.MarshalToPB()
-
-	if _sync {
-		msg.WaitForSave()
-	}
 
 	db.MessageCacheExpiry[m.MessageID] = time.Now().Add(5 * time.Second)
 	return m

@@ -54,12 +54,15 @@ func (a *AuthenticationManager) checkPassword(rawPassword, hashedPassword, salt 
 	return res == 1
 }
 
-func (a *AuthenticationManager) AuthenticateUser(am *pb.AuthMethod) (*models.User, bool) {
+func (a *AuthenticationManager) AuthenticateUser(am *pb.AuthMethod) (*models.User, bool, error) {
 	if am.GetUserID() != "" {
+		utils.Log().Trace()
 		if _, ok := a.GetUser(am.GetUserID()); ok {
+			utils.Log().Trace()
 			return a.TokenAuthenticateUser(am.GetUserID(), am.GetToken().GetToken(), am.GetToken().GetTokenID())
 		}
 	}
+	utils.Log().Trace()
 	return a.PasswordAuthenticateUser(am.GetPassword().GetEmail(), am.GetPassword().GetPassword())
 }
 
@@ -142,6 +145,7 @@ func (a *AuthenticationManager) GetUserByEmail(email string) (*models.User, bool
 	})
 
 	if res.Err() != nil {
+		utils.Log().Trace(res.Err())
 		return nil, false
 	}
 
@@ -154,45 +158,77 @@ func (a *AuthenticationManager) GetUserByEmail(email string) (*models.User, bool
 	return u, true
 }
 
-func (a *AuthenticationManager) PasswordAuthenticateUser(email, password string) (*models.User, bool) {
+func (a *AuthenticationManager) PasswordAuthenticateUser(email, password string) (*models.User, bool, error) {
 	u, ok := a.GetUserByEmail(email)
 	if !ok {
-		return nil, false
+		return nil, false, UserDoesNotExistError{}
 	}
 
-	return u, a.checkPassword([]byte(password), u.Password, u.Salt)
+	return u, a.checkPassword([]byte(password), u.Password, u.Salt), nil
 }
 
-func (a *AuthenticationManager) TokenAuthenticateUser(userID, token, tokenID string) (*models.User, bool) {
+func (a *AuthenticationManager) TokenAuthenticateUser(userID, token, tokenID string) (*models.User, bool, error) {
+	// Get user by ID
 	u := &models.User{}
-
 	err := mgm.Coll(u).FindByID(userID, u)
 
 	if err != nil {
-		return nil, false
+		return nil, false, err
 	}
 
+	// Try to get the token associated with tokenID
 	t, ok := u.Tokens[tokenID]
 
 	if !ok {
-		return nil, false
+		utils.Log().Trace()
+
+		return nil, false, InvalidTokenID{}
 	}
 
+	// Make sure token is valid
 	if t.Expires.Before(time.Now()) {
 		delete(u.Tokens, tokenID)
 		mgm.Coll(u).Update(u)
-		return nil, false
+		return nil, false, TokenExpired{}
 	}
 
+	// Compare tokens in a time sensitive way
 	res := subtle.ConstantTimeCompare([]byte(token), []byte(t.Token))
 
 	if res == 1 {
-		return u, true
+		go a.RenewToken(token, tokenID, u)
+		return u, true, nil
 	}
 
+	// Valid tokenID, invalid token.  Deletes the token.
 	delete(u.Tokens, tokenID)
 	mgm.Coll(u).Update(u)
-	return nil, false
+	return nil, false, InvalidToken{}
+}
+
+func (a *AuthenticationManager) RenewToken(token, tokenID string, u *models.User) error {
+	u.Tokens[tokenID] = models.Token{
+		Token: token,
+		TokenID: tokenID,
+		Expires: time.Now().Add(time.Hour*24*7),
+	}
+	_, err := mgm.Coll(u).UpdateOne(
+		mgm.Ctx(),
+		bson.M{
+			"_id": bson.M{
+				operator.Eq: u.ID,
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				"tokens": u.Tokens,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (a *AuthenticationManager) SendVerificationEmail(u *models.User) error {
@@ -383,4 +419,31 @@ type VerificationEmailCooldown struct {
 
 func (e VerificationEmailCooldown) Error() string {
 	return "VerificationEmailCooldown"
+}
+
+type InvalidTokenID struct {
+	Message string
+}
+func (e InvalidTokenID) Error() string {
+	return fmt.Sprintf("InvalidTokenID: %v ", e.Message)
+}
+
+type TokenExpired struct {
+	Message string
+}
+func (e TokenExpired) Error() string {
+	return fmt.Sprintf("TokenExpired: %v ", e.Message)
+}
+
+type InvalidToken struct {
+	Message string
+}
+func (e InvalidToken) Error() string {
+	return fmt.Sprintf("TokenExpired: %v ", e.Message)
+}
+type UserDoesNotExistError struct {
+}
+
+func (e UserDoesNotExistError) Error() string {
+	return "UserDoesNotExist"
 }

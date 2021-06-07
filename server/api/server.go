@@ -2,12 +2,14 @@ package api
 
 import (
 	"context"
+	"fmt"
 	pb "github.com/bloblet/fenix/protobufs/go"
 	db "github.com/bloblet/fenix/server/databases"
 	"github.com/bloblet/fenix/server/models"
 	"github.com/bloblet/fenix/server/utils"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/test/bufconn"
 	"net"
@@ -76,14 +78,15 @@ func (api *GRPCApi) Serve() {
 	api.Listen(lis)
 }
 
-func (api *GRPCApi) authenticate(a *pb.AuthMethod) (*models.User, bool) {
-	utils.Log().Trace("")
-
-	return api.authDB.AuthenticateUser(a)
+func (api *GRPCApi) authenticate(a *pb.AuthMethod) (*models.User, bool, error) {
+	u, auth, err := api.authDB.AuthenticateUser(a)
+	if auth == false && err == nil {
+		err = NotAuthorized{}
+	}
+	return u, auth, err
 }
 
 func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.AuthMethod, error) {
-	utils.Log().Trace("")
 	_, okid := api.authDB.GetUser(in.UserID)
 	_, okem := api.authDB.GetUserByEmail(in.Password.Email)
 
@@ -93,11 +96,12 @@ func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Auth
 
 	authenticated := false
 	var u *models.User
-
 	if okid {
 
-		u, authenticated = api.authenticate(in)
-
+		u, authenticated, err := api.authenticate(in)
+		if err != nil {
+			return nil, err
+		}
 		if authenticated {
 			err := api.authDB.DeleteToken(u, in.Token.GetTokenID())
 			if err != nil {
@@ -107,10 +111,11 @@ func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Auth
 		}
 
 	} else if okem {
-		u, authenticated = api.authDB.PasswordAuthenticateUser(
-			in.Password.GetEmail(),
-			in.Password.GetPassword(),
+		u, authenticated, _ = api.authDB.PasswordAuthenticateUser(
+			in.GetPassword().GetEmail(),
+			in.GetPassword().GetPassword(),
 		)
+
 	} else {
 		return nil, InvalidRequest{}
 	}
@@ -131,14 +136,14 @@ func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Auth
 
 	return &pb.AuthMethod{
 		Token: token.MarshalToPB(),
-		UserID: u.ID.String(),
+		UserID: u.ID.Hex(),
 	}, nil
 }
 
 func (api *GRPCApi) GetUser(_ context.Context, in *pb.RequestUser) (*pb.User, error) {
 	utils.Log().Trace("")
-	if _, a := api.authenticate(in.GetAuthentication()); !a {
-		return nil, NotAuthorized{}
+	if _, a, err := api.authenticate(in.GetAuthentication()); !a {
+		return nil, NotAuthorized{Message: err.Error()}
 	}
 
 	u, ok := api.authDB.GetUser(in.GetUserID())
@@ -168,9 +173,9 @@ func (api *GRPCApi) CreateUser(_ context.Context, in *pb.RequestUserCreation) (*
 
 func (api *GRPCApi) WaitForEmailVerification(in *pb.AuthMethod, s pb.Users_WaitForEmailVerificationServer) error {
 	utils.Log().Trace("")
-	u, authenticated := api.authenticate(in)
-	if !authenticated {
-		return NotAuthorized{}
+	u, a, err := api.authenticate(in)
+	if !a {
+		return NotAuthorized{Message: err.Error()}
 	}
 
 	if u.EmailVerified == true {
@@ -188,12 +193,12 @@ func (api *GRPCApi) WaitForEmailVerification(in *pb.AuthMethod, s pb.Users_WaitF
 
 func (api *GRPCApi) ResendEmailVerification(_ context.Context, in *pb.AuthMethod) (*pb.Success, error) {
 	utils.Log().Trace("")
-	u, authenticated := api.authenticate(in)
-	if !authenticated {
-		return nil, NotAuthorized{}
+	u, a, err := api.authenticate(in)
+	if !a {
+		return nil, NotAuthorized{Message: err.Error()}
 	}
 
-	err := api.authDB.SendVerificationEmail(u)
+	err = api.authDB.SendVerificationEmail(u)
 	if err != nil {
 		return nil, err
 	}
@@ -203,12 +208,12 @@ func (api *GRPCApi) ResendEmailVerification(_ context.Context, in *pb.AuthMethod
 
 func (api *GRPCApi) ChangeMFA(_ context.Context, in *pb.MFAStatus) (*pb.Success, error) {
 	utils.Log().Trace("")
-	u, authenticated := api.authenticate(in.GetAuthentication())
-	if !authenticated {
-		return nil, NotAuthorized{}
+	u, a, err := api.authenticate(in.GetAuthentication())
+	if !a {
+		return nil, NotAuthorized{Message: err.Error()}
 	}
 
-	err := api.authDB.ChangeMFA(u, in.GetStatus())
+	err = api.authDB.ChangeMFA(u, in.GetStatus())
 	if err != nil {
 		return nil, err
 	}
@@ -217,9 +222,9 @@ func (api *GRPCApi) ChangeMFA(_ context.Context, in *pb.MFAStatus) (*pb.Success,
 
 func (api *GRPCApi) GetMFALink(_ context.Context, in *pb.RequestMFALink) (*pb.MFALink, error) {
 	utils.Log().Trace("")
-	u, authenticated := api.authenticate(in.GetAuthentication())
-	if !authenticated {
-		return nil, NotAuthorized{}
+	u, a, err := api.authenticate(in.GetAuthentication())
+	if !a {
+		return nil, NotAuthorized{Message: err.Error()}
 	}
 
 	l, err := api.authDB.Generate2FALink(u)
@@ -232,11 +237,11 @@ func (api *GRPCApi) GetMFALink(_ context.Context, in *pb.RequestMFALink) (*pb.MF
 
 func (api *GRPCApi) ChangeUsername(_ context.Context, in *pb.ChangeUsernameRequest) (*pb.User, error) {
 	utils.Log().Trace("")
-	u, authenticated := api.authenticate(in.GetAuthentication())
-	if !authenticated {
-		return nil, NotAuthorized{}
+	u, a, err := api.authenticate(in.GetAuthentication())
+	if !a {
+		return nil, NotAuthorized{Message: err.Error()}
 	}
-	err := api.authDB.ChangeUsername(u, in.GetUsername())
+	err = api.authDB.ChangeUsername(u, in.GetUsername())
 	if err != nil {
 		return nil, err
 	}
@@ -245,12 +250,12 @@ func (api *GRPCApi) ChangeUsername(_ context.Context, in *pb.ChangeUsernameReque
 
 func (api *GRPCApi) ChangePassword(_ context.Context, in *pb.ChangePasswordRequest) (*pb.UserCreated, error) {
 	utils.Log().Trace("")
-	u, authenticated := api.authDB.PasswordAuthenticateUser(
+	u, authenticated, err := api.authDB.PasswordAuthenticateUser(
 		in.GetAuthentication().GetEmail(),
 		in.GetAuthentication().GetPassword(),
 	)
 	if !authenticated {
-		return nil, NotAuthorized{}
+		return nil, NotAuthorized{Message: err.Error()}
 	}
 
 	t, err := api.authDB.ChangePassword(u, in.GetPassword())
@@ -264,15 +269,14 @@ func (api *GRPCApi) ChangePassword(_ context.Context, in *pb.ChangePasswordReque
 	}, nil
 }
 
-func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
+func (api GRPCApi) GetMessageHistory(ctx context.Context, in *pb.RequestMessageHistory) (*pb.MessageHistory, error) {
 	utils.Log().Trace("")
-	user, authenticated := api.authenticate(history.GetAuthentication())
-
-	if !authenticated {
-		return nil, NotAuthorized{}
+	u, a, err := api.authenticate(in.GetAuthentication())
+	if !a {
+		return nil, NotAuthorized{Message: err.Error()}
 	}
 
-	messageHistory, err := api.msgDB.FetchMessagesAfter(history.GetLastMessageTime().AsTime())
+	messageHistory, err := api.msgDB.FetchMessagesAfter(in.GetLastMessageTime().AsTime())
 
 	if err != nil {
 		utils.Log().Error(err)
@@ -282,8 +286,8 @@ func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMes
 	p, _ := peer.FromContext(ctx)
 	utils.Log().WithFields(
 		log.Fields{
-			"userID":        user.ID,
-			"username":      user.Username,
+			"userID":        u.ID,
+			"username":      u.Username,
 			"ip":            p.Addr,
 			"numOfMessages": messageHistory.NumberOfMessages,
 		},
@@ -293,15 +297,45 @@ func (api GRPCApi) GetMessageHistory(ctx context.Context, history *pb.RequestMes
 }
 
 func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) error {
-	utils.Log().Trace("")
-	m, err := stream.Recv()
-	if err != nil {
-		return err
+	p, _ := peer.FromContext(stream.Context())
+	meta, ok := metadata.FromIncomingContext(stream.Context())
+	if !ok {
+		return NotAuthorized{Message: "Invalid Metadata"}
 	}
-	user, authenticated := api.authenticate(m.GetAuthentication())
+
+	_tokenID := meta["tokenid"]
+	_userID := meta["userid"]
+	_token := meta["token"]
+
+	if len(_tokenID) != 1 || len(_userID) != 1 || len(_token) != 1 {
+		return NotAuthorized{Message: "Invalid Metadata (Not exactly one of each metadata variable)"}
+	}
+
+	tokenID := _tokenID[0]
+	userID := _userID[0]
+	token := _token[0]
+
+	if tokenID == "" || userID == "nil" || token == "" {
+		return NotAuthorized{Message: "Either tokenID, userID, or token are nil."}
+	}
+
+	utils.Log().WithField("ip", p.Addr).Trace()
+
+	utils.Log().WithFields(log.Fields{
+		"userID": userID,
+		"token": token,
+		"tokenID": tokenID,
+	}).Trace("HandleMessages Auth")
+
+	user, authenticated, err := api.authDB.TokenAuthenticateUser(userID, token, tokenID)
+
+	if err != nil {
+		return NotAuthorized{err.Error()}
+	}
 
 	if !authenticated {
-		return NotAuthorized{}
+		utils.Log().Trace()
+		return NotAuthorized{Message: "Invalid token/tokenid/userid"}
 	}
 
 	api.connectedClients[user.ID.Hex()] = make(chan *pb.Message, 1)
@@ -313,7 +347,6 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 		}
 	}()
 
-	p, _ := peer.FromContext(stream.Context())
 
 	utils.Log().WithFields(
 		log.Fields{
@@ -327,11 +360,12 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 	for true {
 		// Wait for the next message request
 		sendRequest, err := stream.Recv()
+		go api.authDB.RenewToken(token, tokenID, user)
 		if err != nil {
 			return err
 		}
 
-		msg := api.msgDB.NewMessage(sendRequest, user.Username)
+		msg := api.msgDB.NewMessage(sendRequest, user)
 
 		utils.Log().WithFields(
 			log.Fields{
@@ -380,8 +414,9 @@ func (e InvalidRequest) Error() string {
 }
 
 type NotAuthorized struct {
+	Message string
 }
 
 func (e NotAuthorized) Error() string {
-	return "NotAuthorized"
+	return fmt.Sprintf("Not Authorized: %v", e.Message)
 }
