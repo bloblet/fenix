@@ -1,0 +1,150 @@
+syntax="proto3";
+
+// TODO: Fix
+option go_package = "./go";
+
+import "google/protobuf/timestamp.proto";
+import "user.proto";
+
+message Channel {
+    string channelID = 1;
+    string channelName = 2;
+    // string serverID = 3;
+    Settings settings = 4;
+    reserved 3;
+}
+
+message ChannelAuditLog {
+    repeated Action actions = 1;
+}
+
+message Action {
+    string userID = 1;
+    string method = 2;
+    google.protobuf.Timestamp timestamp = 3;
+}
+
+message Settings {
+    string owner = 1;
+}
+
+message Roles {
+    repeated Role roles = 1;
+}
+
+message Role {
+    Privileges privs = 1;
+    string color = 2;
+    string name = 3;
+    string roleID = 4;
+}
+
+message Privileges {
+    bool canSendMessages = 1;
+    bool canViewAuditLog = 2;
+    bool canGetMessageHistory = 3;
+    bool canManageChannel = 4;
+    bool canChangeNicks = 5;
+    bool canKick = 6;
+    bool canBan = 7;
+    bool canInvite = 8;
+    bool canMute = 9;
+    bool canMakeRoles = 10;
+    bool canGiveRoles = 11;
+}
+
+message ChannelInvite {
+    string inviteID = 1;
+    string channelID = 2;
+}
+
+message UserInfo {
+    User user = 1;
+    string nickname = 2;
+    Roles roles = 3;
+}
+message CreateChannelRequest {
+    AuthMethod auth = 1;
+    string channelName = 2;
+}
+
+message GetChannelInfoRequest {
+    AuthMethod auth = 1;
+    string channelID = 2;
+}
+
+message JoinChannelRequest {
+    AuthMethod auth = 1;
+    ChannelInvite invite = 2;
+}
+
+message GetUserInfoRequest {
+    AuthMethod auth = 1;
+    string channelID = 2;
+    string userID = 3;
+}
+
+message ChannelInfo {
+    string channelID = 1;
+    string channelName = 2;
+    ChannelAuditLog auditLog = 3;
+    Roles roles = 4;
+    repeated ChannelInvite invites = 5;
+    repeated string bannedUsers = 6;
+}
+
+message UpdateChannelInfoRequest {
+    AuthMethod auth = 1;
+    ChannelInfo channelInfo = 2;
+}
+
+message KickUserRequest {
+    AuthMethod auth = 1;
+    string target = 2;
+}
+
+message BanUserRequest {
+    AuthMethod auth = 1;
+    string target = 2;
+}
+
+message UserPrivs {
+    string userID = 1;
+    Privileges privs = 2;
+}
+
+message UpdateUserPrivsRequest {
+    AuthMethod auth = 1;
+    UserPrivs privs = 2;
+}
+
+message GetUsersRequest {
+    AuthMethod auth = 1;
+    string startingWith = 2;
+}
+
+message UserList {
+    repeated User users = 1;
+}
+service Channels {
+    rpc JoinChannel(JoinChannelRequest) returns (Channel) {}
+    rpc CreateChannel(CreateChannelRequest) returns (Channel) {}
+
+    rpc CreateChannelInvite(GetChannelInfoRequest) returns (ChannelInvite) {}
+    rpc DeleteChannelInvite(ChannelInvite) returns (Success) {}
+
+    rpc GetChannel(GetChannelInfoRequest) returns (Channel) {}
+    rpc GetChannelAuditLog(GetChannelInfoRequest) returns (ChannelAuditLog) {}
+    rpc GetChannelRoles(GetChannelInfoRequest) returns (Roles) {}
+    rpc GetUserInfo(GetUserInfoRequest) returns (UserInfo) {}
+    rpc GetRoles(GetChannelInfoRequest) returns (Roles) {}
+
+    rpc UpdateChannelInfo(UpdateChannelInfoRequest) returns (ChannelInfo) {}
+
+    rpc KickUser(KickUserRequest) returns (Success) {}
+    rpc BanUser(BanUserRequest) returns (Success) {}
+
+    rpc UpdateUserPrivs(UpdateUserPrivsRequest) returns (UserPrivs) {}
+
+    rpc GetUsers(GetUsersRequest) returns (UserList) {}
+}

@@ -1,37 +1,42 @@
 package models
 
 import (
-	"encoding/json"
-	"github.com/bloblet/fenix/server/utils"
-	log "github.com/sirupsen/logrus"
+	pb "github.com/bloblet/fenix/protobufs/go"
+	"github.com/kamva/mgm/v3"
 )
 
 // User is the current datatype for fenix users.
 type User struct {
-	ID            string
-	Token         string
-	Email         string
-	Salt          []byte `json:"-"`
-	Password      []byte `json:"-"`
-	Username      string
-	Discriminator string
-	Servers       []string
-	Friends       []string
-	Activity      Activity
-	Settings      UserSettings
+	SyncModel        `bson:",inline"`
+	mgm.DefaultModel `bson:",inline"`
+	AuthSecret       string
+	Tokens           map[string]Token
+	Email            string
+	Salt             []byte `json:"-"`
+	Password         []byte `json:"-"`
+	OTT              string
+	EmailVerified    bool
+	Username         string
+	Discriminator    string
+	MFAEnabled       bool
 }
 
-// ToJSON converts the user to JSON
-func (user *User) ToJSON() string {
-	b, err := json.Marshal(user)
-	if err != nil {
-		utils.Log().WithFields(
-			log.Fields{
-				"byteLength": len(b),
-				"error":      err,
-			},
-		).Error("Encountered an error while serializing a User object.")
-	}
+func (u *User) MarshalToPB() *pb.User {
+	p := pb.User{}
+	p.Discriminator = u.Discriminator
+	p.UserID = u.ID.Hex()
+	p.Username = u.Username
+	return &p
+}
 
-	return string(b)
+func (u *User) MarshalToUserCreated(tokenID string) *pb.UserCreated {
+	p := pb.UserCreated{}
+	p.User = u.MarshalToPB()
+	t := u.Tokens[tokenID]
+	p.Token = t.MarshalToPB()
+	return &p
+}
+
+func (u *User) CollectionName() string {
+	return "users"
 }

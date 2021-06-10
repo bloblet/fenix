@@ -1,10 +1,11 @@
 syntax="proto3";
 
 // TODO: Fix
-option go_package = "go";
+option go_package = "./go";
 
 
 import "google/protobuf/timestamp.proto";
+import "user.proto";
 
 message CreateMessage {
 	string Content = 1;
@@ -12,8 +13,8 @@ message CreateMessage {
 
 message Message {
 	string MessageID = 1;
-	string UserID = 2;
-	// string ChannelID = 3;
+	User User = 2;
+    //	string ChannelID = 3;
 	// string ServerID = 4;
 	// repeated string Comments = 5;
 	// repeated string Reactions = 6;
@@ -29,9 +30,8 @@ message MessageHistory {
 }
 
 message RequestMessageHistory {
-	// string ChannelID = 1;
+	AuthMethod Authentication = 1;
 	google.protobuf.Timestamp LastMessageTime = 2;
-	reserved 1;
 }
 
 service Messages {

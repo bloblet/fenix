@@ -1,40 +1,84 @@
 syntax = "proto3";
+import "google/protobuf/timestamp.proto";
 
-// TODO: Fix
-option go_package = "go";
-message Nil {}
+option go_package = "./go";
 
 message User {
-	// Identification
-	string ID = 1;
-	string username = 2;
-	string discriminator = 3;
-
-	// Social	
-	Activity activity = 4;
-	repeated string servers = 5;
-	repeated string friends = 6;
-
-	// Authentication
-	string token = 7;
-	string email = 8;
-	bytes Salt = 9;
-	bytes Password = 10;
-
-	// Misc
-	UserSettings settings = 11;
+	string UserID = 1;
+	string Username = 2;
+	string Discriminator = 3;
 }
 
-message UserSettings {}
-message Activity {}
-
-message Authenticate {
-	string token = 1;
-	string ID = 2;
+message RequestUser {
+	AuthMethod authentication = 1;
+	string UserID = 2;
 }
 
-message CreateUser {
-	string username = 1;
-	string password = 2;
-	string email = 3;
+message Token {
+	string Token = 1;
+	string TokenID = 2;
+	google.protobuf.Timestamp ExpirationDate = 3;
+}
+
+message Password {
+	string Password = 1;
+	string email = 2;
+
+}
+
+message AuthMethod {
+	string UserID = 1;
+	Token Token = 2;
+	Password Password = 3;
+}
+
+message RequestUserCreation {
+	string Username = 1;
+	string Password = 2;
+	string Email = 3;
+}
+
+message UserCreated {
+	User User = 1;
+	Token Token = 2;
+}
+
+
+message Success {
+
+}
+
+message MFAStatus {
+	AuthMethod Authentication = 1;
+	bool Status = 2;
+}
+
+message RequestMFALink {
+	AuthMethod Authentication = 1;
+}
+
+message MFALink {
+	string Link = 1;
+}
+
+message ChangeUsernameRequest {
+	AuthMethod Authentication = 1;
+	string Username = 2;
+}
+
+message ChangePasswordRequest {
+	Password Authentication = 1;
+	string Password = 2;
+}
+
+service Users {
+	rpc RequestToken(AuthMethod) returns (AuthMethod) {}
+	rpc GetUser(RequestUser) returns (User) {}
+	rpc CreateUser(RequestUserCreation) returns (UserCreated) {}
+	rpc WaitForEmailVerification(AuthMethod) returns (stream Success) {}
+	rpc ResendEmailVerification(AuthMethod) returns (Success) {}
+	rpc ChangeMFA(MFAStatus) returns (Success) {}
+	rpc GetMFALink(RequestMFALink) returns (MFALink) {}
+	rpc ChangeUsername(ChangeUsernameRequest) returns (User) {}
+	rpc ChangePassword(ChangePasswordRequest) returns (UserCreated) {}
 }

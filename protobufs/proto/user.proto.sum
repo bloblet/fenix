@@ -1,11 +1,9 @@
 {
     "grpc_gen": {
-        "ts_web": "b257b7189f1357ce1acc0fc4d9dc3dd4ea060091"
+        "go": "060786720c3e25d9598a057e3077fc296a133a50"
     },
-    "proto": "c44d83ecf223bf2e77fa43f2481a149d3422cb4b",
+    "proto": "3d4eb8429c39d9bb59cae2e0e6c7bf0643bc1d17",
     "proto_gen": {
-        "go": "d5ed323a5a36fe376b3eb59625d70005e5e95ce1",
-        "js_web": "da4297cb973fc6ba4e956b6e03fbfa02ff23f236",
-        "ts_web": "1238aa3ffb8bac5d84a960b086555f0bfff32dab"
+        "go": "29f9e0836405524cea0f3e36c984eba9c5433400"
     }
 }

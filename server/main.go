@@ -1,10 +1,10 @@
 package main
 
 import (
-	api "github.com/bloblet/fenix/server/api"
+	"github.com/bloblet/fenix/server/api"
 )
 
 func main() {
-	a := api.GRPCApi{}
-	a.Serve()
+	api := api.GRPCApi{}
+	api.Serve()
 }
