@@ -3,12 +3,11 @@
 [![Codeac](https://static.codeac.io/badges/2-281254941.svg "Codeac.io")](https://app.codeac.io/github/bloblet/fenix)
 ![Tests](https://github.com/bloblet/fenix/workflows/Tests/badge.svg)
 
-Fenix is a social media platform inspired by [Discord](https://discord.com), but offers more security. 
+## OUR MISSION
+Fenix is a service to cleanly process messages for other communication oriented applications by providing a fast and easy to use API.
 
-DMs will have an end to end encryption option.
-
-Different levels of account security can be enabled, yet to be decided on.
-
+-------------------
+### CONTRIBUTING
 If you would like to help with Fenix, or make a Fenix client, [open an issue.](https://github.com/bloblet/fenix/issues).
 
 # Table of Contents
