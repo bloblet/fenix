@@ -27,7 +27,6 @@ type ChannelsClient interface {
 	GetChannelRoles(ctx context.Context, in *GetChannelInfoRequest, opts ...grpc.CallOption) (*Roles, error)
 	GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*UserInfo, error)
 	GetRoles(ctx context.Context, in *GetChannelInfoRequest, opts ...grpc.CallOption) (*Roles, error)
-	GetChannelInfo(ctx context.Context, in *GetChannelInfoRequest, opts ...grpc.CallOption) (*ChannelInfo, error)
 	UpdateChannelInfo(ctx context.Context, in *UpdateChannelInfoRequest, opts ...grpc.CallOption) (*ChannelInfo, error)
 	KickUser(ctx context.Context, in *KickUserRequest, opts ...grpc.CallOption) (*Success, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*Success, error)
@@ -124,15 +123,6 @@ func (c *channelsClient) GetRoles(ctx context.Context, in *GetChannelInfoRequest
 	return out, nil
 }
 
-func (c *channelsClient) GetChannelInfo(ctx context.Context, in *GetChannelInfoRequest, opts ...grpc.CallOption) (*ChannelInfo, error) {
-	out := new(ChannelInfo)
-	err := c.cc.Invoke(ctx, "/Channels/GetChannelInfo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *channelsClient) UpdateChannelInfo(ctx context.Context, in *UpdateChannelInfoRequest, opts ...grpc.CallOption) (*ChannelInfo, error) {
 	out := new(ChannelInfo)
 	err := c.cc.Invoke(ctx, "/Channels/UpdateChannelInfo", in, out, opts...)
@@ -191,7 +181,6 @@ type ChannelsServer interface {
 	GetChannelRoles(context.Context, *GetChannelInfoRequest) (*Roles, error)
 	GetUserInfo(context.Context, *GetUserInfoRequest) (*UserInfo, error)
 	GetRoles(context.Context, *GetChannelInfoRequest) (*Roles, error)
-	GetChannelInfo(context.Context, *GetChannelInfoRequest) (*ChannelInfo, error)
 	UpdateChannelInfo(context.Context, *UpdateChannelInfoRequest) (*ChannelInfo, error)
 	KickUser(context.Context, *KickUserRequest) (*Success, error)
 	BanUser(context.Context, *BanUserRequest) (*Success, error)
@@ -230,9 +219,6 @@ func (UnimplementedChannelsServer) GetUserInfo(context.Context, *GetUserInfoRequ
 }
 func (UnimplementedChannelsServer) GetRoles(context.Context, *GetChannelInfoRequest) (*Roles, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRoles not implemented")
-}
-func (UnimplementedChannelsServer) GetChannelInfo(context.Context, *GetChannelInfoRequest) (*ChannelInfo, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetChannelInfo not implemented")
 }
 func (UnimplementedChannelsServer) UpdateChannelInfo(context.Context, *UpdateChannelInfoRequest) (*ChannelInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateChannelInfo not implemented")
@@ -424,24 +410,6 @@ func _Channels_GetRoles_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Channels_GetChannelInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetChannelInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChannelsServer).GetChannelInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Channels/GetChannelInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChannelsServer).GetChannelInfo(ctx, req.(*GetChannelInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Channels_UpdateChannelInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateChannelInfoRequest)
 	if err := dec(in); err != nil {
@@ -574,10 +542,6 @@ var Channels_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRoles",
 			Handler:    _Channels_GetRoles_Handler,
-		},
-		{
-			MethodName: "GetChannelInfo",
-			Handler:    _Channels_GetChannelInfo_Handler,
 		},
 		{
 			MethodName: "UpdateChannelInfo",

@@ -43,7 +43,7 @@ func login(username string, t *testing.T) (*GRPCApi, *client.Client, *pb.UsersCl
 	clientAuth := pb.AuthMethod{
 		UserID: "test",
 		Password: &pb.Password{
-			Email: "test@test.com",
+			Email:    "test@test.com",
 			Password: "test",
 		},
 	}

@@ -208,9 +208,9 @@ func (a *AuthenticationManager) TokenAuthenticateUser(userID, token, tokenID str
 
 func (a *AuthenticationManager) RenewToken(token, tokenID string, u *models.User) error {
 	u.Tokens[tokenID] = models.Token{
-		Token: token,
+		Token:   token,
 		TokenID: tokenID,
-		Expires: time.Now().Add(time.Hour*24*7),
+		Expires: time.Now().Add(time.Hour * 24 * 7),
 	}
 	_, err := mgm.Coll(u).UpdateOne(
 		mgm.Ctx(),
@@ -351,7 +351,7 @@ func (a *AuthenticationManager) CreateToken() (*models.Token, error) {
 	}
 
 	t := &models.Token{
-		Token:  base64.URLEncoding.EncodeToString(token),
+		Token:   base64.URLEncoding.EncodeToString(token),
 		Expires: time.Now().Add(time.Hour * 24 * 7),
 		TokenID: tokenID.String(),
 	}
@@ -424,6 +424,7 @@ func (e VerificationEmailCooldown) Error() string {
 type InvalidTokenID struct {
 	Message string
 }
+
 func (e InvalidTokenID) Error() string {
 	return fmt.Sprintf("InvalidTokenID: %v ", e.Message)
 }
@@ -431,6 +432,7 @@ func (e InvalidTokenID) Error() string {
 type TokenExpired struct {
 	Message string
 }
+
 func (e TokenExpired) Error() string {
 	return fmt.Sprintf("TokenExpired: %v ", e.Message)
 }
@@ -438,9 +440,11 @@ func (e TokenExpired) Error() string {
 type InvalidToken struct {
 	Message string
 }
+
 func (e InvalidToken) Error() string {
 	return fmt.Sprintf("TokenExpired: %v ", e.Message)
 }
+
 type UserDoesNotExistError struct {
 }
 

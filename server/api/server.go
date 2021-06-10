@@ -135,7 +135,7 @@ func (api *GRPCApi) RequestToken(_ context.Context, in *pb.AuthMethod) (*pb.Auth
 	}
 
 	return &pb.AuthMethod{
-		Token: token.MarshalToPB(),
+		Token:  token.MarshalToPB(),
 		UserID: u.ID.Hex(),
 	}, nil
 }
@@ -322,8 +322,8 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 	utils.Log().WithField("ip", p.Addr).Trace()
 
 	utils.Log().WithFields(log.Fields{
-		"userID": userID,
-		"token": token,
+		"userID":  userID,
+		"token":   token,
 		"tokenID": tokenID,
 	}).Trace("HandleMessages Auth")
 
@@ -346,7 +346,6 @@ func (api *GRPCApi) HandleMessages(stream pb.Messages_HandleMessagesServer) erro
 			_ = stream.Send(<-api.connectedClients[user.ID.Hex()])
 		}
 	}()
-
 
 	utils.Log().WithFields(
 		log.Fields{

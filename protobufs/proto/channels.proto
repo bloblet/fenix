@@ -26,7 +26,6 @@ message Action {
 
 message Settings {
     string owner = 1;
-    bool public = 2;
 }
 
 message Roles {
@@ -37,6 +36,7 @@ message Role {
     Privileges privs = 1;
     string color = 2;
     string name = 3;
+    string roleID = 4;
 }
 
 message Privileges {
@@ -90,7 +90,7 @@ message ChannelInfo {
     ChannelAuditLog auditLog = 3;
     Roles roles = 4;
     repeated ChannelInvite invites = 5;
-    repeated User bannedUsers = 6;
+    repeated string bannedUsers = 6;
 }
 
 message UpdateChannelInfoRequest {
@@ -138,7 +138,6 @@ service Channels {
     rpc GetChannelRoles(GetChannelInfoRequest) returns (Roles) {}
     rpc GetUserInfo(GetUserInfoRequest) returns (UserInfo) {}
     rpc GetRoles(GetChannelInfoRequest) returns (Roles) {}
-    rpc GetChannelInfo(GetChannelInfoRequest) returns (ChannelInfo) {}
 
     rpc UpdateChannelInfo(UpdateChannelInfoRequest) returns (ChannelInfo) {}
 

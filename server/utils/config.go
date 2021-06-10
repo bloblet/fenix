@@ -11,8 +11,8 @@ var configOnce = sync.Once{}
 var config *Config
 
 type API struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
 	HTTPHost string `yaml:"httpHost"`
 }
 
@@ -67,8 +67,8 @@ func readConfig() {
 
 		config = &Config{
 			API: API{
-				Host: "localhost",
-				Port: 4545,
+				Host:     "localhost",
+				Port:     4545,
 				HTTPHost: "localhost:4546",
 			},
 			Database: Database{
